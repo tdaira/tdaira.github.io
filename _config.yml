@@ -4,7 +4,7 @@ email: tdaira09403@jacobtomlinson.co.uk
 description: "渋谷で働くエンジニアのブログ"
 baseurl: ""
 url: "https://tdaira.github.io/"
-title_description: "渋谷で働くエンジニアのブログです。最近はストリーム処理に興味があってApache Beam、Apache Kafkaあたりをいじっています。よく使う言語はGo、Scala、Javaあたりです。主なネット上の生息地はTwitterなので興味のある人はフォローしてみてください。"
+title_description: "渋谷で働くエンジニアのブログです。最近はストリーム処理に興味があってApache Beam、Apache Kafkaあたりをいじっています。よく使う言語はGo、Scala、Javaあたりです。主なネット上の生息地はTwitterです。"
 title_image: "https://pbs.twimg.com/profile_images/975963403960270848/E-y_cDzm_400x400.jpg"
 google_analytics: "UA-20365477-4"
 disqus_account: tdaira
