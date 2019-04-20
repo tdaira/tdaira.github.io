@@ -36,3 +36,6 @@ kramdown:
 
 permalink: pretty
 exclude: [vendor]
+
+# Time zone
+timezone: Asia/Tokyo
