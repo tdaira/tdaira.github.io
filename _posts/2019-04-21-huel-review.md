@@ -3,13 +3,12 @@ layout:     post
 title:      1食299円の完全食Huel
 date:       2019-04-21 21:30:00 +0900
 summary:    COMPよりコスパのいい完全食が日本で買えるようになったらしいので買って飲んでみました。
-image:      /images/Screenshot%20from%202019-04-20%2016-53-07.png
+image:      /images/IMG_1662.JPG
 categories: その他
 thumbnail: cogs
 tags:
- - Jekyll
- - WordPress
- - ブログ
+ - Huel
+ - 完全食
 ---
 
 <!-- Font Awesome thumbnail (https://fontawesome.com/icons?d=gallery) is used in thumbnail tag. -->
