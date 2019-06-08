@@ -244,6 +244,7 @@ ul {
 
 		@media (min-width: $screen-lg-min) {
 			margin-left: -10%;
+			font-size: 32px;
 			width: 120%;
 		}
 	}
@@ -449,22 +450,33 @@ ul {
 
 	h1, h2, h3, h4, h5, h6 {
 		font-family: 'Noto Sans JP', sans-serif;
-		margin-bottom: 10px;
+		margin-bottom: 15px;
+	}
+
+	.header {
+		font-size: 40px;
+	}
+
+	h1 {
+		font-size: 28px;
+		font-weight: bold;
 	}
 
 	h2 {
-		font-size: 36px;
+		font-size: 26px;
+		font-weight: bold;
 	}
 
 	h3 {
-		font-size: 28px;
+		font-size: 24px;
+		font-weight: bold;
 	}
 
 	p {
 		margin-bottom: 10px;
 
 		@media (min-width: $screen-sm-min) {
-			margin-bottom: 40px;
+			margin-bottom: 20px;
 		}
 	}
 
@@ -561,7 +573,7 @@ ul {
 		}
 
 		.content {
-			font-size: 18px;
+			font-size: 15px;
 			line-height: 170%;
 			padding-left: 15px;
 			padding-right: 15px;
@@ -569,7 +581,7 @@ ul {
 			padding-bottom: 10px;
 
 			@media (min-width: $screen-sm-min) {
-				font-size: 24px;
+				font-size: 18px;
 				padding-left: 30px;
 				padding-right: 30px;
 				padding-top: 40px;
