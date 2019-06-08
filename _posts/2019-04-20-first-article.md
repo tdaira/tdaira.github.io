@@ -4,7 +4,7 @@ title:      ブログが新しくなりました
 date:       2019-04-20 13:58:00 +0900
 summary:    最近WordPressの管理がめんどくさくなってしまったので、Jekyllで新しくブログ作りました。
 image:      /images/Screenshot%20from%202019-04-20%2016-53-07.png
-categories: その他
+categories: othors
 thumbnail: cogs
 tags:
  - Jekyll
