@@ -139,6 +139,39 @@ pre code {
   line-height: 1.6;
 }
 
+/* Prism.js theme overrides to match site theme */
+pre[class*="language-"],
+code[class*="language-"] {
+  background: var(--bg-code);
+  color: var(--text);
+  text-shadow: none;
+}
+
+pre[class*="language-"] {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.token.comment, .token.prolog, .token.doctype, .token.cdata { color: #636da6; }
+.token.punctuation { color: var(--text-secondary); }
+.token.property, .token.tag, .token.boolean, .token.number, .token.constant, .token.symbol { color: #ff9e64; }
+.token.selector, .token.attr-name, .token.string, .token.char, .token.builtin { color: #9ece6a; }
+.token.operator, .token.entity, .token.url { color: #89ddff; }
+.token.atrule, .token.attr-value, .token.keyword { color: #bb9af7; }
+.token.function, .token.class-name { color: #7aa2f7; }
+.token.regex, .token.important, .token.variable { color: #e0af68; }
+
+[data-theme="light"] .token.comment, [data-theme="light"] .token.prolog, [data-theme="light"] .token.doctype, [data-theme="light"] .token.cdata { color: #8890a8; }
+[data-theme="light"] .token.punctuation { color: var(--text-secondary); }
+[data-theme="light"] .token.property, [data-theme="light"] .token.tag, [data-theme="light"] .token.boolean, [data-theme="light"] .token.number, [data-theme="light"] .token.constant, [data-theme="light"] .token.symbol { color: #b5560f; }
+[data-theme="light"] .token.selector, [data-theme="light"] .token.attr-name, [data-theme="light"] .token.string, [data-theme="light"] .token.char, [data-theme="light"] .token.builtin { color: #4a7a1e; }
+[data-theme="light"] .token.operator, [data-theme="light"] .token.entity, [data-theme="light"] .token.url { color: #2e7d9e; }
+[data-theme="light"] .token.atrule, [data-theme="light"] .token.attr-value, [data-theme="light"] .token.keyword { color: #7c3aad; }
+[data-theme="light"] .token.function, [data-theme="light"] .token.class-name { color: #2e59a8; }
+[data-theme="light"] .token.regex, [data-theme="light"] .token.important, [data-theme="light"] .token.variable { color: #a07020; }
+
 table {
   width: 100%;
   border-collapse: collapse;
