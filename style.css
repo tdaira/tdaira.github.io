@@ -242,7 +242,8 @@ tr:nth-child(even) td { background: var(--table-stripe); }
   text-align: center;
 }
 
-.feature-icon { font-size: 2rem; margin-bottom: 0.75rem; }
+.feature-icon { margin-bottom: 0.75rem; color: var(--text-secondary); }
+.feature-icon svg { width: 36px; height: 36px; }
 .feature h3 { margin-bottom: 0.5rem; }
 
 .diagram {
@@ -255,6 +256,8 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 }
 
 .diagram pre { border: none; padding: 0; margin: 0; background: none; }
+.diagram .mermaid svg { background: transparent !important; }
+.diagram .mermaid { display: flex; justify-content: center; }
 
 .bench-value { font-size: 1.8rem; font-weight: 700; color: var(--accent); }
 .bench-unit { font-size: 0.9rem; color: var(--text-secondary); }

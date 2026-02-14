@@ -25,22 +25,42 @@
   <main>
     <div class="hero">
       <div class="hero-logo"></div>
-      <p>Type-safe, high-performance RPC over Bluetooth Low Energy using Protocol Buffers.</p>
+      <p>Type-safe, high-performance RPC<br>over Bluetooth Low Energy using Protocol Buffers.</p>
     </div>
 
     <div class="features">
       <div class="feature">
-        <div class="feature-icon">&#x1F4E1;</div>
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <path d="M9 13l-2 2 2 2"/>
+            <path d="M15 13l2 2-2 2"/>
+          </svg>
+        </div>
         <h3>Protocol Buffers</h3>
         <p>Define your BLE communication with <code>.proto</code> files. Get type-safe, language-agnostic serialization with zero ambiguity.</p>
       </div>
       <div class="feature">
-        <div class="feature-icon">&#x26A1;</div>
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+        </div>
         <h3>High Performance</h3>
         <p>Achieves near-maximum BLE throughput (~30 KB/s) with MTU-aware fragmentation and zero-copy optimizations.</p>
       </div>
       <div class="feature">
-        <div class="feature-icon">&#x1F4F1;</div>
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="13" height="10" rx="1"/>
+            <path d="M6 13v1.5h5V13"/>
+            <line x1="8.5" y1="14.5" x2="8.5" y2="16.5"/>
+            <line x1="5" y1="16.5" x2="12" y2="16.5"/>
+            <rect x="17" y="5" width="5.5" height="13" rx="1"/>
+            <line x1="17" y1="15" x2="22.5" y2="15"/>
+          </svg>
+        </div>
         <h3>Multi-Platform</h3>
         <p>Run on iOS, Android, macOS, Linux, and embedded devices (nRF54, EFR32) with consistent APIs.</p>
       </div>
@@ -55,23 +75,20 @@
     <p>All communication uses a single GATT Characteristic: the Central writes requests via <em>Write Without Response</em> and receives responses via <em>Notify</em>.</p>
 
     <div class="diagram">
-<pre>
-Central (iOS/Android/Python)              Peripheral (Zephyr/Python)
-         |                                        |
-         |  1. Protobuf encode + Command wrap     |
-         |  2. Split into MTU containers          |
-         | -------- Write Without Response -----&gt; |
-         |  ...  (subsequent containers)  ...     |
-         |                                        |  3. Reassemble containers
-         |                                        |  4. Decode command + Protobuf
-         |                                        |  5. Execute handler
-         |                                        |  6. Encode response
-         |                                        |  7. Split into containers
-         | &lt;-------------- Notify --------------- |
-         |  ...  (subsequent containers)  ...     |
-         |  8. Reassemble + decode response       |
-         |                                        |
-</pre>
+      <pre class="mermaid" id="sequence-diagram">
+sequenceDiagram
+    participant C as Central&lt;br/&gt;(iOS / Android / Python)
+    participant P as Peripheral&lt;br/&gt;(Zephyr / Python)
+    Note over C: Protobuf encode + Command wrap
+    Note over C: Split into MTU containers
+    C->>+P: Write Without Response (containers)
+    Note over P: Reassemble containers
+    Note over P: Decode command + Protobuf
+    Note over P: Execute handler
+    Note over P: Encode response + Split into containers
+    P->>-C: Notify (containers)
+    Note over C: Reassemble + decode response
+      </pre>
     </div>
 
     <h2>Supported Platforms</h2>
@@ -115,6 +132,8 @@ Central (iOS/Android/Python)              Peripheral (Zephyr/Python)
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>mermaid.initialize({ startOnLoad: false });</script>
   <script src="script.js"></script>
 </body>
 </html>

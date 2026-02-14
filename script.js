@@ -12,6 +12,7 @@ function toggleTheme() {
   document.documentElement.setAttribute("data-theme", next);
   localStorage.setItem("theme", next);
   updateToggleIcon(next);
+  renderMermaid();
 }
 
 function updateToggleIcon(theme) {
@@ -55,8 +56,24 @@ function initLogo() {
     });
 }
 
+// Mermaid diagram
+function renderMermaid() {
+  const el = document.getElementById("sequence-diagram");
+  if (!el || typeof mermaid === "undefined") return;
+  if (!el.dataset.source) el.dataset.source = el.textContent;
+  const theme = document.documentElement.getAttribute("data-theme");
+  el.textContent = el.dataset.source;
+  el.removeAttribute("data-processed");
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: theme === "dark" ? "dark" : "default"
+  });
+  mermaid.run({ nodes: [el] });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
   initLogo();
   setActiveNav();
+  renderMermaid();
 });
