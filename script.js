@@ -35,7 +35,20 @@ function setActiveNav() {
   });
 }
 
+// Inject SVG logo from external file
+function initLogo() {
+  const el = document.querySelector(".logo");
+  if (!el) return;
+  fetch("logo.svg")
+    .then(r => r.text())
+    .then(svg => {
+      el.innerHTML = svg;
+      el.querySelector("svg").classList.add("logo-svg");
+    });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
+  initLogo();
   setActiveNav();
 });
