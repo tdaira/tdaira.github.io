@@ -49,7 +49,8 @@ function initLogo() {
       if (hero) {
         hero.innerHTML = svg;
         hero.querySelector("svg").classList.add("hero-logo-svg");
-        if (header) header.style.visibility = "hidden";
+        const headerSvg = header && header.querySelector("svg");
+        if (headerSvg) headerSvg.style.visibility = "hidden";
       }
     });
 }
