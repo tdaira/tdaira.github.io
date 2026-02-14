@@ -90,7 +90,10 @@ protoc --swift_out=YourApp/Proto/ \
   -I proto/ proto/blerpc.proto</code></pre>
       <h3>Usage</h3>
       <pre><code class="language-swift">let client = BlerpcClient()
-try await client.connect()
+
+// Scan for peripherals
+let devices = try await client.scan()
+try await client.connect(device: devices[0])
 
 // Type-safe RPC call
 let response = try await client.echo(message: "hello")
@@ -119,7 +122,10 @@ dependencies {
 }</code></pre>
       <h3>Usage</h3>
       <pre><code class="language-kotlin">val client = BlerpcClient(context)
-client.connect()
+
+// Scan for peripherals
+val devices = client.scan()
+client.connect(devices[0])
 
 val response = client.echo(message = "hello")
 println(response.message)  // "hello"
@@ -138,14 +144,19 @@ pip install git+https://github.com/tdaira/blerpc-protocol.git</code></pre>
       <h3>Usage</h3>
       <pre><code class="language-python">from blerpc.client import BlerpcClient
 
-async with BlerpcClient() as client:
-    await client.connect()
+client = BlerpcClient()
 
-    resp = await client.echo(message="hello")
-    print(resp.message)  # "hello"
+# Scan for peripherals
+devices = await client.scan()
+await client.connect(devices[0])
 
-    flash = await client.flash_read(address=0, length=8192)
-    print(len(flash.data))  # 8192</code></pre>
+resp = await client.echo(message="hello")
+print(resp.message)  # "hello"
+
+flash = await client.flash_read(address=0, length=8192)
+print(len(flash.data))  # 8192
+
+await client.disconnect()</code></pre>
     </div>
 
     <h3>Zephyr Peripheral (C)</h3>
@@ -192,7 +203,8 @@ from blerpc.client import BlerpcClient
 
 async def main():
     client = BlerpcClient()
-    await client.connect()
+    devices = await client.scan()
+    await client.connect(devices[0])
     resp = await client.echo(message='hello')
     print(f'Echo: {resp.message}')
     await client.disconnect()
