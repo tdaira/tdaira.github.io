@@ -259,6 +259,26 @@ tr:nth-child(even) td { background: var(--table-stripe); }
 .diagram .mermaid svg { background: transparent !important; }
 .diagram .mermaid { display: flex; justify-content: center; }
 
+.packet-format-wrapper { overflow-x: auto; margin: 1rem 0 1.5rem; }
+.packet-format {
+  display: flex;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  min-width: 550px;
+}
+.packet-field {
+  border-right: 1px solid var(--border);
+  padding: 0.5rem 0.25rem;
+  text-align: center;
+  background: var(--bg-secondary);
+  min-width: 35px;
+}
+.packet-field:last-child { border-right: none; }
+.packet-field-name { font-size: 0.78rem; font-weight: 600; color: var(--text); }
+.packet-field-size { font-size: 0.68rem; color: var(--text-secondary); margin-top: 2px; }
+.packet-field-var { background: var(--bg-code); }
+
 .bench-value { font-size: 1.8rem; font-weight: 700; color: var(--accent); }
 .bench-unit { font-size: 0.9rem; color: var(--text-secondary); }
 

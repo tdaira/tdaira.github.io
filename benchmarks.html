@@ -35,7 +35,7 @@
         <p style="margin-top:0.5rem"><span class="badge badge-blue">CI: 15ms</span></p>
       </div>
       <div class="card" style="text-align:center">
-        <p style="margin-bottom:0.3rem">iOS</p>
+        <p style="margin-bottom:0.3rem">iOS (iPhone 16)</p>
         <div class="bench-value">26.4</div>
         <div class="bench-unit">KB/s flash read</div>
         <p style="margin-top:0.5rem"><span class="badge badge-blue">CI: 30ms</span></p>
@@ -66,7 +66,7 @@
       </tbody>
     </table>
 
-    <h3>iOS Central (CoreBluetooth)</h3>
+    <h3>iOS Central (iPhone 16, CoreBluetooth)</h3>
     <p>Connection interval: 30ms (iOS negotiation)</p>
     <table>
       <thead><tr><th>Test</th><th>Result</th><th>Details</th></tr></thead>
@@ -114,7 +114,7 @@
       <p>The connection interval (CI) is the primary factor in round-trip latency. Each request&ndash;response cycle requires at least 2 connection events:</p>
       <ul>
         <li><strong>macOS (bleak)</strong>: CI = 15ms &rarr; ~30ms round-trip</li>
-        <li><strong>iOS (CoreBluetooth)</strong>: CI = 30ms &rarr; ~60ms round-trip</li>
+        <li><strong>iOS (iPhone 16)</strong>: CI = 30ms &rarr; ~60ms round-trip</li>
         <li><strong>Android (Pixel 5)</strong>: CI = 30ms &rarr; ~60ms round-trip, but highest throughput due to more packets per connection event</li>
       </ul>
       <p>The peripheral advertises preferred CI of 15&ndash;30ms (<code>PREF_MIN_INT=12, PREF_MAX_INT=24</code>). The actual CI is determined by the Central&rsquo;s OS.</p>

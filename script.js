@@ -58,17 +58,19 @@ function initLogo() {
 
 // Mermaid diagram
 function renderMermaid() {
-  const el = document.getElementById("sequence-diagram");
-  if (!el || typeof mermaid === "undefined") return;
-  if (!el.dataset.source) el.dataset.source = el.textContent;
-  const theme = document.documentElement.getAttribute("data-theme");
-  el.textContent = el.dataset.source;
-  el.removeAttribute("data-processed");
+  var els = document.querySelectorAll(".mermaid");
+  if (!els.length || typeof mermaid === "undefined") return;
+  els.forEach(function(el) {
+    if (!el.dataset.source) el.dataset.source = el.textContent;
+    el.textContent = el.dataset.source;
+    el.removeAttribute("data-processed");
+  });
+  var theme = document.documentElement.getAttribute("data-theme");
   mermaid.initialize({
     startOnLoad: false,
     theme: theme === "dark" ? "dark" : "default"
   });
-  mermaid.run({ nodes: [el] });
+  mermaid.run({ nodes: Array.from(els) });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
