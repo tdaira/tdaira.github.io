@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Protocol - blerpc</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a href="." class="logo">blerpc</a>
+      <button class="hamburger" onclick="toggleMenu()">&#9776;</button>
+      <nav>
+        <a href=".">Overview</a>
+        <a href="getting-started.html">Getting Started</a>
+        <a href="benchmarks.html">Benchmarks</a>
+        <a href="protocol.html">Protocol</a>
+        <a href="repositories.html">Repositories</a>
+        <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()"></button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <h1>Protocol Specification</h1>
+    <p>blerpc uses a two-layer protocol stack on top of BLE GATT. The <strong>Command Layer</strong> wraps Protocol Buffers payloads with RPC metadata, and the <strong>Container Layer</strong> fragments them into MTU-sized packets for BLE transmission.</p>
+
+    <div class="diagram">
+<pre>
+  Application
+      |
+      v
+ +-----------+     Protobuf encode/decode
+ |  Command  |     + command name, type
+ |   Layer   |
+ +-----------+
+      |
+      v
+ +-----------+     MTU-based split/reassemble
+ | Container |     + transaction ID, sequencing
+ |   Layer   |     + control commands
+ +-----------+
+      |
+      v
+  BLE GATT
+  (single characteristic)
+</pre>
+    </div>
+
+    <h2>BLE Transport</h2>
+    <div class="card">
+      <p>All communication uses a <strong>single GATT Characteristic</strong>:</p>
+      <ul>
+        <li><strong>Requests</strong>: Central writes via <em>Write Without Response</em></li>
+        <li><strong>Responses</strong>: Peripheral sends via <em>Notify</em></li>
+      </ul>
+      <p>MTU is negotiated automatically via the BLE ATT MTU Exchange procedure. The application uses the negotiated MTU (minus 3 bytes ATT overhead) to determine the maximum container payload size.</p>
+      <p>Default timeout is <strong>100ms</strong>, configurable via the timeout control container.</p>
+    </div>
+
+    <h2>Container Layer</h2>
+    <p>The container layer splits large payloads into MTU-sized packets and reassembles them on the receiving side. Each container carries a transaction ID and sequence number for tracking and ordering.</p>
+
+    <h3>Container Format</h3>
+    <p>All multi-byte fields are <strong>little-endian</strong>.</p>
+
+    <h4>First Container (type=0b00)</h4>
+    <p>The first container in a transaction includes the total payload length:</p>
+    <div class="diagram">
+<pre>
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| transaction_id|sequence_number| type|control_cmd|rsv|       ...
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  ...  total_length (16)        | payload_len   |  payload ...
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+</pre>
+    </div>
+    <table>
+      <thead><tr><th>Field</th><th>Bits</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>transaction_id</code></td><td>8</td><td>Unique ID for this request/response pair. Resets per transaction.</td></tr>
+        <tr><td><code>sequence_number</code></td><td>8</td><td>Increments with each container sent. Resets per transaction.</td></tr>
+        <tr><td><code>type</code></td><td>2</td><td><code>0b00</code> = first</td></tr>
+        <tr><td><code>control_cmd</code></td><td>4</td><td><code>0x0</code> (unused for data containers)</td></tr>
+        <tr><td><code>reserved</code></td><td>2</td><td>Zero-filled</td></tr>
+        <tr><td><code>total_length</code></td><td>16</td><td>Total payload size across all containers (bytes, little-endian)</td></tr>
+        <tr><td><code>payload_len</code></td><td>8</td><td>Payload size in this container (bytes)</td></tr>
+        <tr><td><code>payload</code></td><td>variable</td><td>Fragment of the command data</td></tr>
+      </tbody>
+    </table>
+    <p>Header size: <strong>6 bytes</strong> (transaction_id + sequence_number + flags + total_length + payload_len)</p>
+
+    <h4>Subsequent Container (type=0b01)</h4>
+    <p>Continuation containers omit <code>total_length</code>:</p>
+    <div class="diagram">
+<pre>
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+| transaction_id|sequence_number| type|control_cmd|rsv|       ...
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  ... payload_len|            payload ...
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+</pre>
+    </div>
+    <p>Header size: <strong>4 bytes</strong> (no total_length field)</p>
+
+    <h4>Byte 2 Bitfield Detail</h4>
+    <p>The third byte of every container encodes the type, control command, and reserved bits:</p>
+    <div class="diagram">
+<pre>
+  Bit:  7   6   5   4   3   2   1   0
+      +---+---+---+---+---+---+---+---+
+      | type  | control_cmd   |  rsv  |
+      +---+---+---+---+---+---+---+---+
+
+  type:         00 = first, 01 = subsequent, 11 = control
+  control_cmd:  0x0-0x5 (only valid when type=11)
+  rsv:          reserved (0)
+</pre>
+    </div>
+
+    <h3>Container Splitting Example</h3>
+    <p>A 500-byte command payload with MTU=247 (244 usable after ATT overhead):</p>
+    <div class="diagram">
+<pre>
+Command payload: 500 bytes
+MTU: 247 bytes (244 usable)
+
+Container 1 (FIRST):   6-byte header + 238-byte payload = 244 bytes
+Container 2 (SUBSEQUENT): 4-byte header + 240-byte payload = 244 bytes
+Container 3 (SUBSEQUENT): 4-byte header +  22-byte payload =  26 bytes
+                                           ---
+                              Total:       500 bytes
+</pre>
+    </div>
+
+    <h3>Maximum Payload</h3>
+    <p>The <code>sequence_number</code> is 8 bits, limiting a single transaction to ~255 containers. With a typical MTU of 247 (240 bytes per subsequent container), the practical maximum payload per transaction is approximately <strong>60 KB</strong>. For larger transfers, use multiple request/response cycles.</p>
+
+    <h2>Control Containers</h2>
+    <p>Control containers (<code>type=0b11</code>) carry protocol-level commands instead of application data.</p>
+
+    <h3>Timeout Sharing (control_cmd=0x1)</h3>
+    <p>Allows the peripheral to communicate its processing timeout to the central.</p>
+    <div class="card">
+      <h3>Request (Central &rarr; Peripheral)</h3>
+      <table>
+        <thead><tr><th>Field</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>type</td><td><code>0b11</code> (control)</td></tr>
+          <tr><td>control_cmd</td><td><code>0x1</code></td></tr>
+          <tr><td>payload_len</td><td><code>0x00</code></td></tr>
+        </tbody>
+      </table>
+      <h3>Response (Peripheral &rarr; Central)</h3>
+      <table>
+        <thead><tr><th>Field</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>type</td><td><code>0b11</code> (control)</td></tr>
+          <tr><td>control_cmd</td><td><code>0x1</code></td></tr>
+          <tr><td>payload_len</td><td><code>0x02</code></td></tr>
+          <tr><td>payload</td><td><code>timeout_ms</code> (16-bit LE, milliseconds)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Capability Sharing (control_cmd=0x4)</h3>
+    <p>Allows the peripheral to communicate its buffer constraints to the central.</p>
+    <div class="card">
+      <h3>Request (Central &rarr; Peripheral)</h3>
+      <table>
+        <thead><tr><th>Field</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>type</td><td><code>0b11</code> (control)</td></tr>
+          <tr><td>control_cmd</td><td><code>0x4</code></td></tr>
+          <tr><td>payload_len</td><td><code>0x00</code></td></tr>
+        </tbody>
+      </table>
+      <h3>Response (Peripheral &rarr; Central)</h3>
+      <table>
+        <thead><tr><th>Field</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>type</td><td><code>0b11</code> (control)</td></tr>
+          <tr><td>control_cmd</td><td><code>0x4</code></td></tr>
+          <tr><td>payload_len</td><td><code>0x04</code></td></tr>
+          <tr><td>payload[0:2]</td><td><code>max_request_payload_size</code> (16-bit LE)</td></tr>
+          <tr><td>payload[2:4]</td><td><code>max_response_payload_size</code> (16-bit LE)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Stream End (control_cmd=0x2, 0x3)</h3>
+    <p>Signals the end of a streaming sequence. Either side can terminate a stream.</p>
+    <div class="card">
+      <table>
+        <thead><tr><th>control_cmd</th><th>Direction</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>0x2</code></td><td>Central &rarr; Peripheral</td><td>Central ends the upload stream</td></tr>
+          <tr><td><code>0x3</code></td><td>Peripheral &rarr; Central</td><td>Peripheral ends the download stream</td></tr>
+        </tbody>
+      </table>
+      <p>Both have <code>payload_len=0x00</code> (no payload).</p>
+    </div>
+
+    <h3>Error Notification (control_cmd=0x5)</h3>
+    <p>Sent by the peripheral when an error occurs (e.g., response exceeds buffer limits).</p>
+    <div class="card">
+      <table>
+        <thead><tr><th>Field</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>type</td><td><code>0b11</code> (control)</td></tr>
+          <tr><td>control_cmd</td><td><code>0x5</code></td></tr>
+          <tr><td>payload_len</td><td><code>0x01</code></td></tr>
+          <tr><td>payload[0]</td><td>Error code</td></tr>
+        </tbody>
+      </table>
+      <p>Error codes:</p>
+      <ul>
+        <li><code>0x01</code> &mdash; <strong>RESPONSE_TOO_LARGE</strong>: Response payload exceeds <code>max_response_payload_size</code></li>
+      </ul>
+    </div>
+
+    <h2>Command Layer</h2>
+    <p>The command layer wraps Protocol Buffers-encoded data with RPC metadata. Commands are identified by name (ASCII string), enabling flexible, human-readable dispatch.</p>
+
+    <h3>Command Format</h3>
+    <div class="diagram">
+<pre>
+ 0                   1                   2
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 ...
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|T|  reserved   | cmd_name_len  |  cmd_name ... |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    ... cmd_name |    data_len (16)    | data ...
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+</pre>
+    </div>
+    <table>
+      <thead><tr><th>Field</th><th>Bits</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>type</code></td><td>1</td><td><code>0</code> = request, <code>1</code> = response</td></tr>
+        <tr><td><code>reserved</code></td><td>7</td><td>Zero-filled</td></tr>
+        <tr><td><code>cmd_name_len</code></td><td>8</td><td>Length of the command name in bytes</td></tr>
+        <tr><td><code>cmd_name</code></td><td>variable</td><td>ASCII command name (e.g., <code>echo</code>, <code>flash_read</code>)</td></tr>
+        <tr><td><code>data_len</code></td><td>16</td><td>Length of the protobuf data (bytes, little-endian)</td></tr>
+        <tr><td><code>data</code></td><td>variable</td><td>Protocol Buffers encoded payload</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Command Discovery</h3>
+    <p>Commands are automatically generated from <code>.proto</code> file definitions. Matching <code>*Request</code> / <code>*Response</code> message pairs produce a command whose name is the prefix converted to <code>snake_case</code>:</p>
+    <div class="diagram">
+<pre>
+  EchoRequest + EchoResponse       &rarr;  "echo"
+  FlashReadRequest + FlashReadResponse  &rarr;  "flash_read"
+  DataWriteRequest + DataWriteResponse  &rarr;  "data_write"
+</pre>
+    </div>
+
+    <h2>Request/Response Flow</h2>
+    <p>A complete RPC call involves encoding at the command layer, splitting at the container layer, BLE transmission, and the reverse on the receiving side:</p>
+
+    <div class="diagram">
+<pre>
+Central                                          Peripheral
+  |                                                  |
+  |  1. Protobuf encode EchoRequest                  |
+  |  2. Wrap in command header                       |
+  |     [type=0|len=4|"echo"|data_len|protobuf...]   |
+  |  3. Split into containers                        |
+  |     [txn=1|seq=0|FIRST|total_len|payload...]     |
+  |  ---- Write Without Response (container 1) ----> |
+  |     [txn=1|seq=1|SUBSEQUENT|payload...]          |
+  |  ---- Write Without Response (container 2) ----> |
+  |                                                  |
+  |                          4. Reassemble containers |
+  |                          5. Decode command header |
+  |                          6. Protobuf decode req   |
+  |                          7. Execute handler       |
+  |                          8. Protobuf encode resp  |
+  |                          9. Wrap in command header |
+  |                         10. Split into containers |
+  |                                                  |
+  |  <------------ Notify (container 1) ------------ |
+  |  <------------ Notify (container 2) ------------ |
+  |                                                  |
+  | 11. Reassemble containers                        |
+  | 12. Decode command header                        |
+  | 13. Protobuf decode EchoResponse                 |
+  |                                                  |
+</pre>
+    </div>
+
+    <h2>Streaming</h2>
+    <p>blerpc supports two streaming patterns beyond simple request/response:</p>
+
+    <h3>Peripheral &rarr; Central Stream (Server Streaming)</h3>
+    <p>One request triggers multiple responses. The stream ends with a <code>STREAM_END_P2C</code> control container.</p>
+    <div class="diagram">
+<pre>
+Central                              Peripheral
+  |                                      |
+  |  ---- Request ------>                |
+  |                                      |
+  |  <---- Response 1 (notify) --------- |
+  |  <---- Response 2 (notify) --------- |
+  |  <---- Response 3 (notify) --------- |
+  |  <---- STREAM_END_P2C (control) ---- |
+  |                                      |
+</pre>
+    </div>
+
+    <h3>Central &rarr; Peripheral Stream (Client Streaming)</h3>
+    <p>Multiple requests are sent, followed by a <code>STREAM_END_C2P</code> control container. The peripheral responds with a final message.</p>
+    <div class="diagram">
+<pre>
+Central                              Peripheral
+  |                                      |
+  |  ---- Request 1 ----->               |
+  |  ---- Request 2 ----->               |
+  |  ---- Request 3 ----->               |
+  |  ---- STREAM_END_C2P (control) ----> |
+  |                                      |
+  |  <---- Final Response (notify) ----- |
+  |                                      |
+</pre>
+    </div>
+
+    <h2>Connection Setup Sequence</h2>
+    <p>When a central connects to a peripheral, it performs these initialization steps:</p>
+    <div class="diagram">
+<pre>
+Central                              Peripheral
+  |                                      |
+  |  ---- BLE Connect ------>            |
+  |  ---- MTU Exchange ------>           |
+  |  ---- Discover Services ------>      |
+  |  ---- Enable Notifications ------>   |
+  |                                      |
+  |  ---- Timeout Request (ctrl) ------> |
+  |  <---- Timeout Response (ctrl) ----- |
+  |        (e.g., 100ms)                 |
+  |                                      |
+  |  ---- Capability Request (ctrl) ---> |
+  |  <---- Capability Response (ctrl) -- |
+  |        (max_req=4096, max_resp=8200) |
+  |                                      |
+  |  Ready for RPC calls                 |
+  |                                      |
+</pre>
+    </div>
+  </main>
+
+  <footer>
+    <p>blerpc is licensed under <a href="https://www.gnu.org/licenses/lgpl-3.0.html">LGPL-3.0</a>. &copy; 2025 tdaira.</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

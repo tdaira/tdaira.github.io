@@ -1,51 +1,123 @@
----
-layout: default
-make-smaller-titles: true
----
-
-
-<div class="container-fluid index">
-    <div class="row">
-
-        <div class="col-md-12 main content-panel">
-
-            <div class="gravatar">
-                <img src="{{ site.title_image }}" class="img-circle about-image" height="150" width="150" alt="{{ site.title }}" />
-            </div>
-
-            <h1 class="header author-header" itemprop="headline">{{ site.title }}</h1>
-
-            <div class="author-text">
-                {{ site.title_description }}
-            </div>
-
-            {% include social_links.html %}
-          </div>
-          <div class="col-md-12 main content-panel">
-
-            <div class="articles">
-
-              <!-- <h2>Latest Articles</h2> -->
-              <h2>最近の投稿</h2>
-
-              <ul>
-                  {% for post in site.posts limit: site.post_limit %}
-
-                      <li>
-                          <a href="{{ post.url | prepend: site.baseurl }}">{{ post.title }}</a>
-                          <small class="hidden-xs">{{ post.date | date: "%B %-d, %Y" }}</small>
-                      </li>
-
-                  {% endfor %}
-                  <li>
-                      <!-- <small><i><a href="{{ site.baseurl }}/posts/">more...</a></i></small> -->
-                      <small><i><a href="{{ site.baseurl }}/posts/">⋮</a></i></small>
-                  </li>
-              </ul>
-
-            </div>
-
-        </div>
-
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>blerpc - Type-safe BLE Communication with Protocol Buffers</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a href="." class="logo">blerpc</a>
+      <button class="hamburger" onclick="toggleMenu()">&#9776;</button>
+      <nav>
+        <a href=".">Overview</a>
+        <a href="getting-started.html">Getting Started</a>
+        <a href="benchmarks.html">Benchmarks</a>
+        <a href="protocol.html">Protocol</a>
+        <a href="repositories.html">Repositories</a>
+        <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()"></button>
+      </nav>
     </div>
-</div>
+  </header>
+
+  <main>
+    <div class="hero">
+      <h1>blerpc</h1>
+      <p>Type-safe, high-performance RPC over Bluetooth Low Energy using Protocol Buffers.</p>
+    </div>
+
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">&#x1F4E1;</div>
+        <h3>Protocol Buffers</h3>
+        <p>Define your BLE communication with <code>.proto</code> files. Get type-safe, language-agnostic serialization with zero ambiguity.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">&#x26A1;</div>
+        <h3>High Performance</h3>
+        <p>Achieves near-maximum BLE throughput (~30 KB/s) with MTU-aware fragmentation and zero-copy optimizations.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">&#x1F527;</div>
+        <h3>Code Generation</h3>
+        <p>Auto-generate type-safe client and handler code for all supported languages from a single <code>.proto</code> file.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">&#x1F4F1;</div>
+        <h3>Multi-Platform</h3>
+        <p>Run on iOS, Android, macOS, Linux, and embedded devices (nRF54, EFR32) with consistent APIs.</p>
+      </div>
+    </div>
+
+    <h2>How It Works</h2>
+    <p>blerpc provides a two-layer protocol stack on top of BLE GATT:</p>
+    <ol>
+      <li><strong>Command Layer</strong> &mdash; Wraps Protocol Buffers payloads with command metadata (name, type, data length).</li>
+      <li><strong>Container Layer</strong> &mdash; Fragments command payloads into MTU-sized containers for BLE transmission, with reassembly on the receiving side.</li>
+    </ol>
+    <p>All communication uses a single GATT Characteristic: the Central writes requests via <em>Write Without Response</em> and receives responses via <em>Notify</em>.</p>
+
+    <div class="diagram">
+<pre>
+Central (iOS/Android/Python)              Peripheral (Zephyr/Python)
+         |                                        |
+         |  1. Protobuf encode + Command wrap     |
+         |  2. Split into MTU containers          |
+         | -------- Write Without Response -----&gt; |
+         |  ...  (subsequent containers)  ...     |
+         |                                        |  3. Reassemble containers
+         |                                        |  4. Decode command + Protobuf
+         |                                        |  5. Execute handler
+         |                                        |  6. Encode response
+         |                                        |  7. Split into containers
+         | &lt;-------------- Notify --------------- |
+         |  ...  (subsequent containers)  ...     |
+         |  8. Reassemble + decode response       |
+         |                                        |
+</pre>
+    </div>
+
+    <h2>Supported Platforms</h2>
+
+    <h3>Central (Client)</h3>
+    <table>
+      <thead><tr><th>Platform</th><th>Language</th><th>BLE Stack</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>iOS</td><td>Swift</td><td>CoreBluetooth</td><td><span class="badge badge-green">Stable</span></td></tr>
+        <tr><td>Android</td><td>Kotlin</td><td>Android BLE</td><td><span class="badge badge-green">Stable</span></td></tr>
+        <tr><td>macOS / Linux</td><td>Python</td><td>bleak</td><td><span class="badge badge-green">Stable</span></td></tr>
+        <tr><td>Zephyr (nRF54L15)</td><td>C</td><td>Zephyr BLE</td><td><span class="badge badge-green">Stable</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3>Peripheral (Server)</h3>
+    <table>
+      <thead><tr><th>Platform</th><th>Language</th><th>BLE Stack</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Zephyr (nRF54L15)</td><td>C</td><td>Zephyr BLE</td><td><span class="badge badge-green">Stable</span></td></tr>
+        <tr><td>Zephyr (EFR32xG22E)</td><td>C</td><td>Zephyr BLE + SiLabs HCI</td><td><span class="badge badge-green">Stable</span></td></tr>
+        <tr><td>macOS</td><td>Python</td><td>bless</td><td><span class="badge badge-green">Stable</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3>Protocol Libraries</h3>
+    <table>
+      <thead><tr><th>Language</th><th>Package</th><th>Dependencies</th></tr></thead>
+      <tbody>
+        <tr><td>Swift</td><td><a href="https://github.com/tdaira/blerpc-protocol-swift">blerpc-protocol-swift</a></td><td>Foundation only</td></tr>
+        <tr><td>Kotlin</td><td><a href="https://github.com/tdaira/blerpc-protocol-kt">blerpc-protocol-kt</a></td><td>Protobuf JavaLite</td></tr>
+        <tr><td>Python</td><td><a href="https://github.com/tdaira/blerpc-protocol">blerpc-protocol</a></td><td>None</td></tr>
+        <tr><td>C</td><td><a href="https://github.com/tdaira/blerpc-protocol">blerpc-protocol/c</a></td><td>None</td></tr>
+      </tbody>
+    </table>
+  </main>
+
+  <footer>
+    <p>blerpc is licensed under <a href="https://www.gnu.org/licenses/lgpl-3.0.html">LGPL-3.0</a>. &copy; 2025 tdaira.</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

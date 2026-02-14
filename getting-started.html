@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Getting Started - blerpc</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <a href="." class="logo">blerpc</a>
+      <button class="hamburger" onclick="toggleMenu()">&#9776;</button>
+      <nav>
+        <a href=".">Overview</a>
+        <a href="getting-started.html">Getting Started</a>
+        <a href="benchmarks.html">Benchmarks</a>
+        <a href="protocol.html">Protocol</a>
+        <a href="repositories.html">Repositories</a>
+        <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()"></button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <h1>Getting Started</h1>
+    <p>This guide covers how to define your protocol, generate code, and integrate blerpc into your project.</p>
+
+    <h2>1. Define Your Protocol</h2>
+    <p>Create a <code>.proto</code> file defining your RPC messages. Each command is a Request/Response pair:</p>
+    <pre><code>syntax = "proto3";
+package blerpc;
+
+message EchoRequest {
+  string message = 1;
+}
+
+message EchoResponse {
+  string message = 1;
+}
+
+message FlashReadRequest {
+  uint32 address = 1;
+  uint32 length = 2;
+}
+
+message FlashReadResponse {
+  uint32 address = 1;
+  bytes data = 2;
+}</code></pre>
+    <p>Commands are automatically discovered from matching <code>*Request</code> / <code>*Response</code> pairs. For example, <code>EchoRequest</code> + <code>EchoResponse</code> generates an <code>echo</code> command.</p>
+
+    <h2>2. Code Generation</h2>
+    <p>The <code>generate-handlers</code> tool generates handler stubs and client code for all supported languages.</p>
+
+    <h3>Build the generator</h3>
+    <pre><code>cd tools/generate-handlers
+go build -o generate-handlers .</code></pre>
+
+    <h3>Run code generation</h3>
+    <pre><code>./generate-handlers -root /path/to/blerpc</code></pre>
+    <p>This generates the following files:</p>
+    <table>
+      <thead><tr><th>Output</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>peripheral/src/generated_handlers.h</code></td><td>C handler declarations + lookup table</td></tr>
+        <tr><td><code>peripheral/src/generated_handlers.c</code></td><td>C weak handler stubs</td></tr>
+        <tr><td><code>peripheral_py/generated_handlers.py</code></td><td>Python handler stubs</td></tr>
+        <tr><td><code>central/blerpc/generated/generated_client.py</code></td><td>Python client mixin</td></tr>
+        <tr><td><code>central_android/.../GeneratedClient.kt</code></td><td>Kotlin abstract client</td></tr>
+        <tr><td><code>central_ios/.../GeneratedClient.swift</code></td><td>Swift client protocol extension</td></tr>
+      </tbody>
+    </table>
+
+    <h2>3. Platform Integration</h2>
+
+    <h3>iOS (Swift)</h3>
+    <div class="card">
+      <h3>Dependencies</h3>
+      <p>Add to your Xcode project via Swift Package Manager:</p>
+      <pre><code>// Package.swift or Xcode > File > Add Package Dependencies
+https://github.com/tdaira/blerpc-protocol-swift  (from: 0.1.0)
+https://github.com/apple/swift-protobuf.git      (from: 1.28.0)</code></pre>
+      <h3>Generate Protobuf types</h3>
+      <pre><code>brew install swift-protobuf
+protoc --swift_out=YourApp/Proto/ \
+  --swift_opt=Visibility=Public \
+  -I proto/ proto/blerpc.proto</code></pre>
+      <h3>Usage</h3>
+      <pre><code>let client = BlerpcClient()
+try await client.connect()
+
+// Type-safe RPC call
+let response = try await client.echo(message: "hello")
+print(response.message)  // "hello"
+
+// Read flash data
+let flash = try await client.flashRead(address: 0, length: 8192)
+print(flash.data.count)  // 8192
+
+client.disconnect()</code></pre>
+    </div>
+
+    <h3>Android (Kotlin)</h3>
+    <div class="card">
+      <h3>Dependencies</h3>
+      <p>Add to your <code>build.gradle.kts</code>:</p>
+      <pre><code>repositories {
+    maven {
+        url = uri("https://maven.pkg.github.com/tdaira/blerpc-protocol-kt")
+        credentials { /* GitHub token */ }
+    }
+}
+
+dependencies {
+    implementation("com.blerpc:blerpc-protocol-kt:0.1.0")
+}</code></pre>
+      <h3>Usage</h3>
+      <pre><code>val client = BlerpcClient(context)
+client.connect()
+
+val response = client.echo(message = "hello")
+println(response.message)  // "hello"
+
+client.disconnect()</code></pre>
+    </div>
+
+    <h3>Python (macOS / Linux)</h3>
+    <div class="card">
+      <h3>Dependencies</h3>
+      <pre><code>pip install bleak protobuf
+pip install git+https://github.com/tdaira/blerpc-protocol.git</code></pre>
+      <h3>Generate Protobuf types</h3>
+      <pre><code>protoc --python_out=central/blerpc/generated/ \
+  -I proto/ proto/blerpc.proto</code></pre>
+      <h3>Usage</h3>
+      <pre><code>from blerpc.client import BlerpcClient
+
+async with BlerpcClient() as client:
+    await client.connect()
+
+    resp = await client.echo(message="hello")
+    print(resp.message)  # "hello"
+
+    flash = await client.flash_read(address=0, length=8192)
+    print(len(flash.data))  # 8192</code></pre>
+    </div>
+
+    <h3>Zephyr Peripheral (C)</h3>
+    <div class="card">
+      <h3>Implement handlers</h3>
+      <p>The generated handlers are <code>__attribute__((weak))</code>. Override them in your own source file:</p>
+      <pre><code>// handlers.c
+#include "generated_handlers.h"
+#include "blerpc.pb.h"
+
+int handle_echo(const uint8_t *req_data, size_t req_len,
+                pb_ostream_t *ostream) {
+    blerpc_EchoRequest req = blerpc_EchoRequest_init_zero;
+    pb_istream_t stream = pb_istream_from_buffer(req_data, req_len);
+    if (!pb_decode(&amp;stream, blerpc_EchoRequest_fields, &amp;req))
+        return -1;
+
+    blerpc_EchoResponse resp = blerpc_EchoResponse_init_zero;
+    strncpy(resp.message, req.message, sizeof(resp.message) - 1);
+    if (!pb_encode(ostream, blerpc_EchoResponse_fields, &amp;resp))
+        return -1;
+    return 0;
+}</code></pre>
+      <h3>Build</h3>
+      <pre><code># nRF54L15
+west build -b nrf54l15dk/nrf54l15/cpuapp peripheral
+
+# EFR32xG22E
+west build -b xg22_ek2710a peripheral -- -DBOARD_ROOT=/path/to/blerpc</code></pre>
+    </div>
+
+    <h2>4. Testing with Python Central</h2>
+    <p>The easiest way to verify your peripheral is working:</p>
+    <pre><code># Flash the peripheral firmware
+west flash
+
+# Run the Python integration tests
+cd central
+python -m pytest tests/test_integration.py -v</code></pre>
+    <p>Or use the interactive client:</p>
+    <pre><code>python -c "
+import asyncio
+from blerpc.client import BlerpcClient
+
+async def main():
+    client = BlerpcClient()
+    await client.connect()
+    resp = await client.echo(message='hello')
+    print(f'Echo: {resp.message}')
+    await client.disconnect()
+
+asyncio.run(main())
+"</code></pre>
+  </main>
+
+  <footer>
+    <p>blerpc is licensed under <a href="https://www.gnu.org/licenses/lgpl-3.0.html">LGPL-3.0</a>. &copy; 2025 tdaira.</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
