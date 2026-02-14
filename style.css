@@ -4,8 +4,8 @@
   --bg-code: #1e2030;
   --text: #c0caf5;
   --text-secondary: #a9b1d6;
-  --accent: #7aa2f7;
-  --accent-hover: #89b4fa;
+  --accent: #0082FC;
+  --accent-hover: #339dff;
   --border: #3b4261;
   --success: #9ece6a;
   --warning: #e0af68;
@@ -21,8 +21,8 @@
   --bg-code: #e8e8e8;
   --text: #1a1b26;
   --text-secondary: #4e5173;
-  --accent: #2e59a8;
-  --accent-hover: #1d4a9e;
+  --accent: #0070d6;
+  --accent-hover: #005cb8;
   --border: #d0d0d0;
   --success: #4a7a1e;
   --warning: #a07020;
@@ -216,7 +216,7 @@ tr:nth-child(even) td { background: var(--table-stripe); }
   margin-right: 4px;
 }
 
-.badge-blue { background: rgba(122, 162, 247, 0.15); color: var(--accent); }
+.badge-blue { background: rgba(0, 130, 252, 0.15); color: var(--accent); }
 .badge-green { background: rgba(158, 206, 106, 0.15); color: var(--success); }
 .badge-yellow { background: rgba(224, 175, 104, 0.15); color: var(--warning); }
 .badge-red { background: rgba(247, 118, 142, 0.15); color: var(--error); }
