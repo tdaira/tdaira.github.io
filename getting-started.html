@@ -60,17 +60,19 @@ go build -o generate-handlers .</code></pre>
     <h3>Run code generation</h3>
     <pre><code class="language-bash">./generate-handlers -root /path/to/blerpc</code></pre>
     <p>This generates the following files:</p>
-    <table>
-      <thead><tr><th>Output</th><th>Description</th></tr></thead>
-      <tbody>
-        <tr><td><code>peripheral/src/generated_handlers.h</code></td><td>C handler declarations + lookup table</td></tr>
-        <tr><td><code>peripheral/src/generated_handlers.c</code></td><td>C weak handler stubs</td></tr>
-        <tr><td><code>peripheral_py/generated_handlers.py</code></td><td>Python handler stubs</td></tr>
-        <tr><td><code>central/blerpc/generated/generated_client.py</code></td><td>Python client mixin</td></tr>
-        <tr><td><code>central_android/.../GeneratedClient.kt</code></td><td>Kotlin abstract client</td></tr>
-        <tr><td><code>central_ios/.../GeneratedClient.swift</code></td><td>Swift client protocol extension</td></tr>
-      </tbody>
-    </table>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Output</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>peripheral/src/generated_handlers.h</code></td><td>C handler declarations + lookup table</td></tr>
+          <tr><td><code>peripheral/src/generated_handlers.c</code></td><td>C weak handler stubs</td></tr>
+          <tr><td><code>peripheral_py/generated_handlers.py</code></td><td>Python handler stubs</td></tr>
+          <tr><td><code>central/blerpc/generated/generated_client.py</code></td><td>Python client mixin</td></tr>
+          <tr><td><code>central_android/.../GeneratedClient.kt</code></td><td>Kotlin abstract client</td></tr>
+          <tr><td><code>central_ios/.../GeneratedClient.swift</code></td><td>Swift client protocol extension</td></tr>
+        </tbody>
+      </table>
+    </div>
 
     <h2>3. Platform Integration</h2>
 
