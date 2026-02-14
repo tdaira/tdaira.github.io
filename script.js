@@ -56,26 +56,30 @@ function initLogo() {
     });
 }
 
-// Mermaid diagram
+// Mermaid diagram (called on theme toggle only; initial render via startOnLoad)
 function renderMermaid() {
+  if (typeof mermaid === "undefined") return;
   var els = document.querySelectorAll(".mermaid");
-  if (!els.length || typeof mermaid === "undefined") return;
-  els.forEach(function(el) {
-    if (!el.dataset.source) el.dataset.source = el.textContent;
-    el.textContent = el.dataset.source;
-    el.removeAttribute("data-processed");
-  });
+  if (!els.length) return;
   var theme = document.documentElement.getAttribute("data-theme");
+  els.forEach(function(el) {
+    if (el.dataset.source) {
+      var newEl = document.createElement("pre");
+      newEl.className = "mermaid";
+      newEl.dataset.source = el.dataset.source;
+      newEl.textContent = el.dataset.source;
+      el.parentNode.replaceChild(newEl, el);
+    }
+  });
   mermaid.initialize({
     startOnLoad: false,
     theme: theme === "dark" ? "dark" : "default"
   });
-  mermaid.run({ nodes: Array.from(els) });
+  mermaid.run();
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
   initLogo();
   setActiveNav();
-  renderMermaid();
 });
