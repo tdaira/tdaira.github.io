@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>blerpc - Type-safe BLE Communication with Protocol Buffers</title>
+  <title>bleRPC - Type-safe BLE Communication with Protocol Buffers</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header>
     <div class="header-inner">
-      <a href="." class="logo">blerpc</a>
+      <a href="." class="logo">bleRPC</a>
       <button class="hamburger" onclick="toggleMenu()">&#9776;</button>
       <nav>
         <a href=".">Overview</a>
@@ -24,7 +24,7 @@
 
   <main>
     <div class="hero">
-      <h1>blerpc</h1>
+      <h1>bleRPC</h1>
       <p>Type-safe, high-performance RPC over Bluetooth Low Energy using Protocol Buffers.</p>
     </div>
 
@@ -47,7 +47,7 @@
     </div>
 
     <h2>How It Works</h2>
-    <p>blerpc provides a two-layer protocol stack on top of BLE GATT:</p>
+    <p>bleRPC provides a two-layer protocol stack on top of BLE GATT:</p>
     <ol>
       <li><strong>Command Layer</strong> &mdash; Wraps Protocol Buffers payloads with command metadata (name, type, data length).</li>
       <li><strong>Container Layer</strong> &mdash; Fragments command payloads into MTU-sized containers for BLE transmission, with reassembly on the receiving side.</li>
@@ -110,7 +110,7 @@ Central (iOS/Android/Python)              Peripheral (Zephyr/Python)
   </main>
 
   <footer>
-    <p>blerpc is licensed under <a href="https://www.gnu.org/licenses/lgpl-3.0.html">LGPL-3.0</a>. &copy; 2025 tdaira.</p>
+    <p>bleRPC is licensed under <a href="https://www.gnu.org/licenses/lgpl-3.0.html">LGPL-3.0</a>. &copy; 2025 tdaira.</p>
   </footer>
 
   <script src="script.js"></script>

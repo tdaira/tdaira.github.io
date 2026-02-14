@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Protocol - blerpc</title>
+  <title>Protocol - bleRPC</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header>
     <div class="header-inner">
-      <a href="." class="logo">blerpc</a>
+      <a href="." class="logo">bleRPC</a>
       <button class="hamburger" onclick="toggleMenu()">&#9776;</button>
       <nav>
         <a href=".">Overview</a>
@@ -24,7 +24,7 @@
 
   <main>
     <h1>Protocol Specification</h1>
-    <p>blerpc uses a two-layer protocol stack on top of BLE GATT. The <strong>Command Layer</strong> wraps Protocol Buffers payloads with RPC metadata, and the <strong>Container Layer</strong> fragments them into MTU-sized packets for BLE transmission.</p>
+    <p>bleRPC uses a two-layer protocol stack on top of BLE GATT. The <strong>Command Layer</strong> wraps Protocol Buffers payloads with RPC metadata, and the <strong>Container Layer</strong> fragments them into MTU-sized packets for BLE transmission.</p>
 
     <div class="diagram">
 <pre>
@@ -296,7 +296,7 @@ Central                                          Peripheral
     </div>
 
     <h2>Streaming</h2>
-    <p>blerpc supports two streaming patterns beyond simple request/response:</p>
+    <p>bleRPC supports two streaming patterns beyond simple request/response:</p>
 
     <h3>Peripheral &rarr; Central Stream (Server Streaming)</h3>
     <p>One request triggers multiple responses. The stream ends with a <code>STREAM_END_P2C</code> control container.</p>
@@ -356,7 +356,7 @@ Central                              Peripheral
   </main>
 
   <footer>
-    <p>blerpc is licensed under <a href="https://www.gnu.org/licenses/lgpl-3.0.html">LGPL-3.0</a>. &copy; 2025 tdaira.</p>
+    <p>bleRPC is licensed under <a href="https://www.gnu.org/licenses/lgpl-3.0.html">LGPL-3.0</a>. &copy; 2025 tdaira.</p>
   </footer>
 
   <script src="script.js"></script>
