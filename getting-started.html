@@ -51,10 +51,10 @@ go build -o generate-handlers .</code></pre>
       <table>
         <thead><tr><th>Output</th><th>Description</th></tr></thead>
         <tbody>
-          <tr><td><code>peripheral/src/generated_handlers.h</code></td><td>C handler declarations + lookup table</td></tr>
-          <tr><td><code>peripheral/src/generated_handlers.c</code></td><td>C weak handler stubs</td></tr>
+          <tr><td><code>peripheral_fw/src/generated_handlers.h</code></td><td>C handler declarations + lookup table</td></tr>
+          <tr><td><code>peripheral_fw/src/generated_handlers.c</code></td><td>C weak handler stubs</td></tr>
           <tr><td><code>peripheral_py/generated_handlers.py</code></td><td>Python handler stubs</td></tr>
-          <tr><td><code>central/blerpc/generated/generated_client.py</code></td><td>Python client mixin</td></tr>
+          <tr><td><code>central_py/blerpc/generated/generated_client.py</code></td><td>Python client mixin</td></tr>
           <tr><td><code>central_android/.../GeneratedClient.kt</code></td><td>Kotlin abstract client</td></tr>
           <tr><td><code>central_ios/.../GeneratedClient.swift</code></td><td>Swift client protocol extension</td></tr>
         </tbody>
@@ -126,7 +126,7 @@ client.disconnect()</code></pre>
       <pre><code class="language-bash">pip install bleak protobuf
 pip install git+https://github.com/tdaira/blerpc-protocol.git</code></pre>
       <h3>Generate Protobuf types</h3>
-      <pre><code class="language-bash">protoc --python_out=central/blerpc/generated/ \
+      <pre><code class="language-bash">protoc --python_out=central_py/blerpc/generated/ \
   -I proto/ proto/blerpc.proto</code></pre>
       <h3>Usage</h3>
       <pre><code class="language-python">from blerpc.client import BlerpcClient
@@ -169,10 +169,10 @@ int handle_echo(const uint8_t *req_data, size_t req_len,
 }</code></pre>
       <h3>Build</h3>
       <pre><code class="language-bash"># nRF54L15
-west build -b nrf54l15dk/nrf54l15/cpuapp peripheral
+west build -b nrf54l15dk/nrf54l15/cpuapp peripheral_fw
 
 # EFR32xG22E
-west build -b xg22_ek2710a peripheral -- -DBOARD_ROOT=/path/to/blerpc</code></pre>
+west build -b xg22_ek2710a peripheral_fw -- -DBOARD_ROOT=/path/to/blerpc</code></pre>
     </div>
 
     <h2>4. Testing with Python Central</h2>
@@ -181,7 +181,7 @@ west build -b xg22_ek2710a peripheral -- -DBOARD_ROOT=/path/to/blerpc</code></pr
 west flash
 
 # Run the Python integration tests
-cd central
+cd central_py
 python -m pytest tests/test_integration.py -v</code></pre>
     <p>Or use the interactive client:</p>
     <pre><code class="language-python">python -c "

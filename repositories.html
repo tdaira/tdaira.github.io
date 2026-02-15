@@ -20,9 +20,9 @@
       <table>
         <thead><tr><th>Directory</th><th>Description</th></tr></thead>
         <tbody>
-          <tr><td><code>peripheral/</code></td><td>Zephyr peripheral firmware (C) &mdash; nRF54L15 &amp; EFR32xG22E</td></tr>
+          <tr><td><code>peripheral_fw/</code></td><td>Zephyr peripheral firmware (C) &mdash; nRF54L15 &amp; EFR32xG22E</td></tr>
           <tr><td><code>peripheral_py/</code></td><td>Python peripheral (bless) for role-reversal testing</td></tr>
-          <tr><td><code>central/</code></td><td>Python central client (bleak) + integration tests</td></tr>
+          <tr><td><code>central_py/</code></td><td>Python central client (bleak) + integration tests</td></tr>
           <tr><td><code>central_fw/</code></td><td>Zephyr central firmware (C) for device-to-device communication</td></tr>
           <tr><td><code>central_android/</code></td><td>Android central app (Kotlin) with test runner</td></tr>
           <tr><td><code>central_ios/</code></td><td>iOS central app (Swift) with test runner</td></tr>
@@ -74,10 +74,10 @@
             |       v                                 |
             |  tools/generate-handlers (Go)           |
             |       |                                 |
-            |       +---> peripheral/src/             |
+            |       +---> peripheral_fw/src/             |
             |       |     generated_handlers.{c,h}    |
             |       |                                 |
-            |       +---> central/blerpc/generated/   |
+            |       +---> central_py/blerpc/generated/   |
             |       |     generated_client.py         |
             |       |                                 |
             |       +---> central_android/.../         |
