@@ -30,7 +30,7 @@ function initHeader() {
   const header = document.querySelector("header");
   if (!header) return;
   header.innerHTML = '<div class="header-inner">'
-    + '<a href="." class="logo">bleRPC</a>'
+    + '<a href="." class="logo"><span class="logo-ble">ble</span>RPC</a>'
     + '<button class="hamburger" onclick="toggleMenu()">&#9776;</button>'
     + '<nav>'
     + '<a href=".">Overview</a>'
@@ -62,24 +62,12 @@ function setActiveNav() {
   });
 }
 
-// Inject SVG logo from external file
+// Inject logo into hero section
 function initLogo() {
-  fetch("logo.svg")
-    .then(r => r.text())
-    .then(svg => {
-      const header = document.querySelector(".logo");
-      if (header) {
-        header.innerHTML = svg;
-        header.querySelector("svg").classList.add("logo-svg");
-      }
-      const hero = document.querySelector(".hero-logo");
-      if (hero) {
-        hero.innerHTML = svg;
-        hero.querySelector("svg").classList.add("hero-logo-svg");
-        const headerSvg = header && header.querySelector("svg");
-        if (headerSvg) headerSvg.style.visibility = "hidden";
-      }
-    });
+  const hero = document.querySelector(".hero-logo");
+  if (hero) {
+    hero.innerHTML = '<span class="logo-ble">ble</span>RPC';
+  }
 }
 
 // Dynamic Prism loading

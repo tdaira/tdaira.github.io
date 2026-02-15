@@ -65,17 +65,15 @@ header {
 
 .logo {
   font-size: 1.4rem;
-  font-weight: 700;
-  color: var(--accent);
+  font-weight: 900;
+  color: var(--text);
   text-decoration: none;
   letter-spacing: -0.5px;
 }
 
 .logo:hover { text-decoration: none; }
 
-.logo-svg { height: 28px; width: auto; display: block; }
-.logo-dark { fill: var(--text); }
-.logo-cutout { fill: var(--nav-bg); }
+.logo-ble { color: var(--accent); }
 
 nav { display: flex; align-items: center; gap: 1.5rem; }
 nav a { color: var(--text-secondary); font-size: 0.9rem; }
@@ -238,9 +236,7 @@ tr:nth-child(even) td { background: var(--table-stripe); }
   padding: 3rem 1rem;
 }
 
-.hero-logo { display: flex; justify-content: center; margin-bottom: 1rem; }
-.hero-logo-svg { height: 80px; width: auto; }
-.hero-logo-svg .logo-cutout { fill: var(--bg); }
+.hero-logo { display: flex; justify-content: center; margin-bottom: 0; font-size: 6rem; font-weight: 900; line-height: 1; color: var(--text); }
 .hero h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
 .hero p { font-size: 1.1rem; max-width: 650px; margin: 0 auto 1.5rem; }
 
@@ -254,7 +250,7 @@ tr:nth-child(even) td { background: var(--table-stripe); }
   text-align: center;
 }
 
-.feature-icon { margin-bottom: 0.75rem; color: var(--text-secondary); }
+.feature-icon { margin-top: 1rem; margin-bottom: 0; color: var(--text-secondary); }
 .feature-icon svg { width: 36px; height: 36px; }
 .feature h3 { margin-bottom: 0.5rem; }
 
