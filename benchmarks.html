@@ -17,19 +17,19 @@
     <div class="grid">
       <div class="card" style="text-align:center">
         <p style="margin-bottom:0.3rem">Python (macOS)</p>
-        <div class="bench-value">30.3</div>
+        <div class="bench-value">21.8</div>
         <div class="bench-unit">KB/s flash read</div>
         <p style="margin-top:0.5rem"><span class="badge badge-blue">CI: 15ms</span></p>
       </div>
       <div class="card" style="text-align:center">
         <p style="margin-bottom:0.3rem">iOS (iPhone 16)</p>
-        <div class="bench-value">31.7</div>
+        <div class="bench-value">32.1</div>
         <div class="bench-unit">KB/s flash read</div>
         <p style="margin-top:0.5rem"><span class="badge badge-blue">CI: 30ms</span></p>
       </div>
       <div class="card" style="text-align:center">
         <p style="margin-bottom:0.3rem">Android (Pixel 5)</p>
-        <div class="bench-value">56.7</div>
+        <div class="bench-value">59.0</div>
         <div class="bench-unit">KB/s flash read</div>
         <p style="margin-top:0.5rem"><span class="badge badge-blue">CI: 30ms</span></p>
       </div>
@@ -42,8 +42,8 @@
     <table>
       <thead><tr><th>Test</th><th>Result</th><th>Details</th></tr></thead>
       <tbody>
-        <tr><td>flash_read_throughput</td><td><strong>30.3 KB/s</strong></td><td>10x 8192 bytes, 273 ms/call</td></tr>
-        <tr><td>flash_read_overhead</td><td><strong>34.2 ms/call</strong></td><td>1 byte x 20 calls</td></tr>
+        <tr><td>flash_read_throughput</td><td><strong>21.8 KB/s</strong></td><td>10x 8192 bytes, 366.3 ms/call</td></tr>
+        <tr><td>flash_read_overhead</td><td><strong>38.6 ms/call</strong></td><td>1 byte x 20 calls</td></tr>
         <tr><td>echo_basic</td><td><span class="badge badge-green">PASS</span></td><td></td></tr>
         <tr><td>echo_empty</td><td><span class="badge badge-green">PASS</span></td><td></td></tr>
         <tr><td>echo_max_length</td><td><span class="badge badge-green">PASS</span></td><td>256-char string</td></tr>
@@ -58,12 +58,12 @@
     <table>
       <thead><tr><th>Test</th><th>Result</th><th>Details</th></tr></thead>
       <tbody>
-        <tr><td>flash_read_throughput</td><td><strong>31.7 KB/s</strong></td><td>10x 8192 bytes, 252.0 ms/call</td></tr>
+        <tr><td>flash_read_throughput</td><td><strong>32.1 KB/s</strong></td><td>10x 8192 bytes, 249.0 ms/call</td></tr>
         <tr><td>flash_read_overhead</td><td><strong>62.3 ms/call</strong></td><td>1 byte x 20 calls</td></tr>
         <tr><td>echo_roundtrip</td><td><strong>60.0 ms/call</strong></td><td>50 calls</td></tr>
         <tr><td>data_write_throughput</td><td><strong>3.3 KB/s</strong></td><td>200 bytes x 20 calls, 60.0 ms/call</td></tr>
-        <tr><td>counter_stream (P&rarr;C)</td><td><strong>6.1 ms/item</strong></td><td>20 items in 122ms</td></tr>
-        <tr><td>counter_upload (C&rarr;P)</td><td><strong>4.5 ms/item</strong></td><td>20 items in 90ms</td></tr>
+        <tr><td>counter_stream (P&rarr;C)</td><td><strong>6.1 ms/item</strong></td><td>20 items in 121ms</td></tr>
+        <tr><td>counter_upload (C&rarr;P)</td><td><strong>4.5 ms/item</strong></td><td>20 items in 91ms</td></tr>
         <tr><td>echo_basic</td><td><span class="badge badge-green">PASS</span></td><td></td></tr>
         <tr><td>echo_empty</td><td><span class="badge badge-green">PASS</span></td><td></td></tr>
         <tr><td>flash_read_basic</td><td><span class="badge badge-green">PASS</span></td><td>64 bytes</td></tr>
@@ -79,12 +79,12 @@
     <table>
       <thead><tr><th>Test</th><th>Result</th><th>Details</th></tr></thead>
       <tbody>
-        <tr><td>flash_read_throughput</td><td><strong>56.7 KB/s</strong></td><td>10x 8192 bytes, 141.0 ms/call</td></tr>
-        <tr><td>flash_read_overhead</td><td><strong>90.1 ms/call</strong></td><td>1 byte x 20 calls</td></tr>
-        <tr><td>echo_roundtrip</td><td><strong>62.1 ms/call</strong></td><td>50 calls</td></tr>
-        <tr><td>data_write_throughput</td><td><strong>3.2 KB/s</strong></td><td>200 bytes x 20 calls, 61.8 ms/call</td></tr>
-        <tr><td>counter_stream (P&rarr;C)</td><td><strong>3.2 ms/item</strong></td><td>20 items in 64ms</td></tr>
-        <tr><td>counter_upload (C&rarr;P)</td><td><strong>5.5 ms/item</strong></td><td>20 items in 110ms</td></tr>
+        <tr><td>flash_read_throughput</td><td><strong>59.0 KB/s</strong></td><td>10x 8192 bytes, 135.7 ms/call</td></tr>
+        <tr><td>flash_read_overhead</td><td><strong>90.4 ms/call</strong></td><td>1 byte x 20 calls</td></tr>
+        <tr><td>echo_roundtrip</td><td><strong>62.2 ms/call</strong></td><td>50 calls</td></tr>
+        <tr><td>data_write_throughput</td><td><strong>3.2 KB/s</strong></td><td>200 bytes x 20 calls, 60.3 ms/call</td></tr>
+        <tr><td>counter_stream (P&rarr;C)</td><td><strong>3.7 ms/item</strong></td><td>20 items in 73ms</td></tr>
+        <tr><td>counter_upload (C&rarr;P)</td><td><strong>5.1 ms/item</strong></td><td>20 items in 101ms</td></tr>
         <tr><td>echo_basic</td><td><span class="badge badge-green">PASS</span></td><td></td></tr>
         <tr><td>echo_empty</td><td><span class="badge badge-green">PASS</span></td><td></td></tr>
         <tr><td>flash_read_basic</td><td><span class="badge badge-green">PASS</span></td><td>64 bytes</td></tr>
