@@ -48,7 +48,7 @@ function initHeader() {
 function initFooter() {
   const footer = document.querySelector("footer");
   if (!footer) return;
-  footer.innerHTML = '<p>bleRPC is licensed under <a href="https://www.gnu.org/licenses/lgpl-3.0.html">LGPL-3.0</a>. &copy; 2025 tdaira.</p>';
+  footer.innerHTML = '<p>bleRPC is licensed under <a href="https://www.gnu.org/licenses/lgpl-3.0.html">LGPL-3.0</a> with static linking exception. &copy; 2025 tdaira.</p>';
 }
 
 // Set active nav link
