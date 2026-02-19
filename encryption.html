@@ -39,7 +39,7 @@
     <p>If <code>flags &amp; 0x01</code> is set, the peripheral supports encryption and the central should initiate the key exchange handshake.</p>
 
     <h2>Key Exchange Handshake</h2>
-    <p>The handshake uses 4 steps, each carried in a KEY_EXCHANGE control container (<code>control_cmd=0x6</code>):</p>
+    <p>The handshake uses 4 steps, each carried in a KEY_EXCHANGE control container (<code>control_cmd=0x6</code>). Each payload is prefixed with a 1-byte step identifier.</p>
 
     <div class="diagram">
       <pre class="mermaid">
@@ -47,67 +47,71 @@ sequenceDiagram
     participant C as Central
     participant P as Peripheral
     Note over C: Generate ephemeral X25519 keypair
-    C->>P: Step 1: central_x25519_pubkey (32 bytes)
+    C->>P: Step 1: [step:1] + central_x25519_pubkey (33 bytes)
     Note over P: Generate ephemeral X25519 keypair
     Note over P: Compute shared_secret = X25519(priv, central_pub)
     Note over P: Derive session_key = HKDF(shared_secret)
     Note over P: Sign(ed25519_privkey, central_pub || peripheral_pub)
-    P->>C: Step 2: peripheral_x25519_pubkey + ed25519_pubkey + signature (128 bytes)
+    P->>C: Step 2: [step:1] + x25519_pub + signature + ed25519_pub (129 bytes)
     Note over C: Compute shared_secret = X25519(priv, peripheral_pub)
     Note over C: Derive session_key = HKDF(shared_secret)
     Note over C: Verify signature (TOFU for first connection)
     Note over C: Generate confirmation = encrypt(random, session_key)
-    C->>P: Step 3: encrypted_confirmation (36 bytes)
+    C->>P: Step 3: [step:1] + encrypted_confirmation (45 bytes)
     Note over P: Decrypt confirmation to verify session_key match
     Note over P: Generate confirmation = encrypt(random, session_key)
-    P->>C: Step 4: encrypted_confirmation (36 bytes)
+    P->>C: Step 4: [step:1] + encrypted_confirmation (45 bytes)
     Note over C: Decrypt confirmation to verify session_key match
     Note over C,P: Session key established - all subsequent data is encrypted
       </pre>
     </div>
 
-    <h3>Step 1: Central &rarr; Peripheral</h3>
+    <h3>Step 1: Central &rarr; Peripheral (33 bytes)</h3>
     <div class="card">
       <p>The central generates an ephemeral X25519 keypair and sends its public key.</p>
       <div class="packet-format-wrapper">
         <div class="packet-format">
-          <div class="packet-field" style="flex:1"><div class="packet-field-name">central_x25519_pubkey</div><div class="packet-field-size">32 bytes</div></div>
+          <div class="packet-field" style="flex:1"><div class="packet-field-name">step</div><div class="packet-field-size">1 byte</div></div>
+          <div class="packet-field" style="flex:8"><div class="packet-field-name">central_x25519_pubkey</div><div class="packet-field-size">32 bytes</div></div>
         </div>
       </div>
     </div>
 
-    <h3>Step 2: Peripheral &rarr; Central</h3>
+    <h3>Step 2: Peripheral &rarr; Central (129 bytes)</h3>
     <div class="card">
       <p>The peripheral generates its own ephemeral X25519 keypair, computes the shared secret, derives the session key, and signs both public keys with its long-term Ed25519 key.</p>
       <div class="packet-format-wrapper">
         <div class="packet-format">
+          <div class="packet-field" style="flex:1"><div class="packet-field-name">step</div><div class="packet-field-size">1 byte</div></div>
           <div class="packet-field" style="flex:8"><div class="packet-field-name">peripheral_x25519_pubkey</div><div class="packet-field-size">32 bytes</div></div>
-          <div class="packet-field" style="flex:8"><div class="packet-field-name">ed25519_pubkey</div><div class="packet-field-size">32 bytes</div></div>
           <div class="packet-field" style="flex:16"><div class="packet-field-name">ed25519_signature</div><div class="packet-field-size">64 bytes</div></div>
+          <div class="packet-field" style="flex:8"><div class="packet-field-name">ed25519_pubkey</div><div class="packet-field-size">32 bytes</div></div>
         </div>
       </div>
       <p>The signature covers <code>central_x25519_pubkey || peripheral_x25519_pubkey</code> (64 bytes), binding both parties' ephemeral keys to prevent man-in-the-middle attacks.</p>
     </div>
 
-    <h3>Step 3: Central &rarr; Peripheral</h3>
+    <h3>Step 3: Central &rarr; Peripheral (45 bytes)</h3>
     <div class="card">
       <p>The central verifies the signature, computes the shared secret and session key, then sends an encrypted confirmation to prove it holds the correct session key.</p>
       <div class="packet-format-wrapper">
         <div class="packet-format">
-          <div class="packet-field" style="flex:4"><div class="packet-field-name">counter</div><div class="packet-field-size">4 bytes (LE)</div></div>
+          <div class="packet-field" style="flex:1"><div class="packet-field-name">step</div><div class="packet-field-size">1 byte</div></div>
+          <div class="packet-field" style="flex:4"><div class="packet-field-name">nonce</div><div class="packet-field-size">12 bytes</div></div>
           <div class="packet-field" style="flex:4"><div class="packet-field-name">ciphertext</div><div class="packet-field-size">16 bytes</div></div>
           <div class="packet-field" style="flex:4"><div class="packet-field-name">tag</div><div class="packet-field-size">16 bytes</div></div>
         </div>
       </div>
-      <p>The plaintext is 16 random bytes encrypted with AES-128-GCM using the derived session key.</p>
+      <p>The plaintext is 16 random bytes encrypted with AES-128-GCM using the derived session key and a random 12-byte nonce.</p>
     </div>
 
-    <h3>Step 4: Peripheral &rarr; Central</h3>
+    <h3>Step 4: Peripheral &rarr; Central (45 bytes)</h3>
     <div class="card">
       <p>The peripheral decrypts Step 3 to verify the session key, then sends its own encrypted confirmation.</p>
       <div class="packet-format-wrapper">
         <div class="packet-format">
-          <div class="packet-field" style="flex:4"><div class="packet-field-name">counter</div><div class="packet-field-size">4 bytes (LE)</div></div>
+          <div class="packet-field" style="flex:1"><div class="packet-field-name">step</div><div class="packet-field-size">1 byte</div></div>
+          <div class="packet-field" style="flex:4"><div class="packet-field-name">nonce</div><div class="packet-field-size">12 bytes</div></div>
           <div class="packet-field" style="flex:4"><div class="packet-field-name">ciphertext</div><div class="packet-field-size">16 bytes</div></div>
           <div class="packet-field" style="flex:4"><div class="packet-field-name">tag</div><div class="packet-field-size">16 bytes</div></div>
         </div>
@@ -120,12 +124,12 @@ sequenceDiagram
       <p>The session key is derived from the X25519 shared secret using HKDF-SHA256:</p>
       <pre><code>shared_secret = X25519(my_privkey, peer_pubkey)        # 32 bytes
 session_key   = HKDF-SHA256(
-    salt = None,
+    salt = central_x25519_pubkey || peripheral_x25519_pubkey,  # 64 bytes
     ikm  = shared_secret,
     info = b"blerpc-session-key",
     len  = 16                                           # AES-128 key
 )</code></pre>
-      <p>Both central and peripheral perform the same derivation, arriving at the same 16-byte session key.</p>
+      <p>Both central and peripheral perform the same derivation using the concatenation of both X25519 public keys as the salt, arriving at the same 16-byte session key.</p>
     </div>
 
     <h2>Session Encryption</h2>
@@ -145,7 +149,7 @@ session_key   = HKDF-SHA256(
       <ol>
         <li>Serialize the <a href="protocol.html">CommandPacket</a> (type + name + protobuf data)</li>
         <li>Increment the TX counter</li>
-        <li>Construct 12-byte nonce: <code>[counter_LE:4][0x00:8]</code></li>
+        <li>Construct 12-byte nonce: <code>[counter_LE:4][direction:1][0x00:7]</code> &mdash; <code>direction</code> is <code>0</code> for Central&rarr;Peripheral, <code>1</code> for Peripheral&rarr;Central</li>
         <li>Encrypt with AES-128-GCM: <code>ciphertext, tag = AES-GCM(session_key, nonce, plaintext)</code></li>
         <li>Prepend counter: <code>[counter:4][ciphertext:N][tag:16]</code></li>
         <li>Split into containers as usual</li>
@@ -200,10 +204,10 @@ session_key   = HKDF-SHA256(
 CONFIG_BLERPC_ENCRYPTION=y</code></pre>
       <h3>Python Peripheral</h3>
       <pre><code class="language-python"># server.py - encryption is enabled automatically
-# when X25519 and Ed25519 keys are provided
-server = BlerpcServer(
-    x25519_private_key=x25519_privkey,
-    ed25519_private_key=ed25519_privkey,
+# when X25519 and Ed25519 keys are provided (hex strings)
+peripheral = BlerpcPeripheral(
+    x25519_private_key_hex="...",
+    ed25519_private_key_hex="...",
 )</code></pre>
     </div>
   </main>

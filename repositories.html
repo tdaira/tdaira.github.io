@@ -27,10 +27,9 @@
           <tr><td><code>central_android/</code></td><td>Android central app (Kotlin) with test runner</td></tr>
           <tr><td><code>central_ios/</code></td><td>iOS central app (Swift) with test runner</td></tr>
           <tr><td><code>proto/</code></td><td>Protocol Buffers definitions (<code>blerpc.proto</code>)</td></tr>
-          <tr><td><code>src/</code></td><td>Shared C source (container, command, BLE service)</td></tr>
           <tr><td><code>tools/generate-handlers/</code></td><td>Code generator (Go) &mdash; generates handlers and clients for all languages</td></tr>
           <tr><td><code>boards/</code></td><td>Custom board definitions (EFR32xG22E)</td></tr>
-          <tr><td><code>tests/</code></td><td>Standalone C unit tests</td></tr>
+          <tr><td><code>docs/</code></td><td>Additional documentation (firmware guide)</td></tr>
         </tbody>
       </table>
     </div>
@@ -42,14 +41,14 @@
       <div class="card">
         <h3><a href="https://github.com/tdaira/blerpc-protocol">blerpc-protocol</a></h3>
         <p><span class="badge badge-blue">Python</span> <span class="badge badge-blue">C</span></p>
-        <p>Container splitting/reassembly and command encoding/decoding. The Python package is installable via pip. The C implementation is header-only for embedded use.</p>
+        <p>Container splitting/reassembly, command encoding/decoding, and E2E encryption (key exchange + AES-128-GCM). The Python package is installable via pip. The C implementation (<code>c/src/</code> + <code>c/include/</code>) is for embedded use.</p>
         <pre><code class="language-bash">pip install git+https://github.com/tdaira/blerpc-protocol.git</code></pre>
       </div>
 
       <div class="card">
         <h3><a href="https://github.com/tdaira/blerpc-protocol-swift">blerpc-protocol-swift</a></h3>
         <p><span class="badge badge-blue">Swift</span></p>
-        <p>Swift Package for iOS and macOS. Zero external dependencies (Foundation only). Supports iOS 16+ and macOS 13+.</p>
+        <p>Swift Package for iOS and macOS. Uses Foundation and CryptoKit (Apple platform frameworks). Supports iOS 16+ and macOS 13+.</p>
         <pre><code class="language-swift">// Swift Package Manager
 .package(url: "https://github.com/tdaira/blerpc-protocol-swift", from: "0.2.0")</code></pre>
       </div>
@@ -100,10 +99,10 @@
       <table>
         <thead><tr><th>Repository</th><th>CI Checks</th></tr></thead>
         <tbody>
-          <tr><td>blerpc</td><td>C standalone tests, Python tests + ruff lint, Go lint + build, Peripheral firmware build (nRF54L15 + EFR32xG22E), iOS build, Android build</td></tr>
-          <tr><td>blerpc-protocol</td><td>Python tests + lint, C tests</td></tr>
+          <tr><td>blerpc</td><td>Python tests + ruff lint, C lint (clang-format), Go lint + build, iOS build, Android build</td></tr>
+          <tr><td>blerpc-protocol</td><td>Python tests + lint, C lint + tests</td></tr>
           <tr><td>blerpc-protocol-swift</td><td>swift build, swift test, SwiftLint</td></tr>
-          <tr><td>blerpc-protocol-kt</td><td>Gradle build, Gradle test, ktlint</td></tr>
+          <tr><td>blerpc-protocol-kt</td><td>Gradle test, ktlint</td></tr>
         </tbody>
       </table>
     </div>

@@ -152,7 +152,10 @@ graph TD
         <tbody>
           <tr><td>type</td><td><code>0b11</code> (control)</td></tr>
           <tr><td>control_cmd</td><td><code>0x4</code></td></tr>
-          <tr><td>payload_len</td><td><code>0x00</code></td></tr>
+          <tr><td>payload_len</td><td><code>0x06</code></td></tr>
+          <tr><td>payload[0:2]</td><td><code>max_request_payload_size</code> (16-bit LE, typically 0)</td></tr>
+          <tr><td>payload[2:4]</td><td><code>max_response_payload_size</code> (16-bit LE, typically 0)</td></tr>
+          <tr><td>payload[4:6]</td><td><code>flags</code> (16-bit LE, typically 0)</td></tr>
         </tbody>
       </table>
       <h3>Response (Peripheral &rarr; Central)</h3>
