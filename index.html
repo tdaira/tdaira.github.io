@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>bleRPC - Type-safe BLE Communication with Protocol Buffers</title>
+  <title>bleRPC - Type-safe, Secure BLE Communication with Protocol Buffers</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,7 +12,7 @@
   <main>
     <div class="hero">
       <div class="hero-logo"></div>
-      <p>Type-safe, high-performance RPC<br>over Bluetooth Low Energy using Protocol Buffers.</p>
+      <p>Type-safe, secure, high-performance RPC<br>over Bluetooth Low Energy using Protocol Buffers.</p>
     </div>
 
     <div class="features">
@@ -47,13 +47,24 @@
         <h3>Multi-Platform</h3>
         <p>Run on iOS, Android, macOS, Linux, and embedded devices (nRF54, EFR32) with consistent APIs.</p>
       </div>
+      <div class="feature">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </div>
+        <h3>End-to-End Encryption</h3>
+        <p>Optional <a href="encryption.html">E2E encryption</a> with X25519 key exchange, Ed25519 signatures, and AES-128-GCM session encryption.</p>
+      </div>
     </div>
 
     <h2>How It Works</h2>
-    <p>bleRPC provides a two-layer protocol stack on top of BLE GATT:</p>
+    <p>bleRPC provides a layered protocol stack on top of BLE GATT:</p>
     <ol>
       <li><strong>Command Layer</strong> &mdash; Wraps Protocol Buffers payloads with command metadata (name, type, data length).</li>
-      <li><strong>Container Layer</strong> &mdash; Fragments command payloads into MTU-sized containers for BLE transmission, with reassembly on the receiving side.</li>
+      <li><strong>Encryption Layer</strong> (optional) &mdash; Encrypts the serialized command with AES-128-GCM after a <a href="encryption.html">4-step key exchange</a>.</li>
+      <li><strong>Container Layer</strong> &mdash; Fragments payloads into MTU-sized containers for BLE transmission, with reassembly on the receiving side.</li>
     </ol>
     <p>All communication uses a single GATT Characteristic: the Central writes requests via <em>Write Without Response</em> and receives responses via <em>Notify</em>.</p>
 
@@ -63,14 +74,16 @@ sequenceDiagram
     participant C as Central&lt;br/&gt;(iOS / Android / Python)
     participant P as Peripheral&lt;br/&gt;(Zephyr / Python)
     Note over C: Protobuf encode + Command wrap
+    Note over C: Encrypt (if enabled)
     Note over C: Split into MTU containers
     C->>+P: Write Without Response (containers)
     Note over P: Reassemble containers
+    Note over P: Decrypt (if enabled)
     Note over P: Decode command + Protobuf
     Note over P: Execute handler
-    Note over P: Encode response + Split into containers
+    Note over P: Encode response + Encrypt + Split
     P->>-C: Notify (containers)
-    Note over C: Reassemble + decode response
+    Note over C: Reassemble + Decrypt + Decode
       </pre>
     </div>
 

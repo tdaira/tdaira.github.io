@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Encryption - bleRPC</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header></header>
+
+  <main>
+    <h1>End-to-End Encryption</h1>
+    <p>bleRPC supports optional end-to-end encryption using a 4-step key exchange handshake followed by AES-128-GCM session encryption. Encryption is negotiated during connection setup and is transparent to the application layer.</p>
+
+    <h2>Overview</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>Component</th><th>Algorithm</th></tr></thead>
+        <tbody>
+          <tr><td>Key Agreement</td><td>X25519 ECDH</td></tr>
+          <tr><td>Authentication</td><td>Ed25519 Signatures</td></tr>
+          <tr><td>Key Derivation</td><td>HKDF-SHA256</td></tr>
+          <tr><td>Session Encryption</td><td>AES-128-GCM</td></tr>
+          <tr><td>Replay Protection</td><td>Monotonic Counter</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Capability Negotiation</h2>
+    <p>Encryption is advertised by the peripheral in the <a href="protocol.html">CAPABILITIES</a> response. The 6-byte payload includes a <code>flags</code> field:</p>
+    <div class="packet-format-wrapper">
+      <div class="packet-format">
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">max_request</div><div class="packet-field-size">16 bits (LE)</div></div>
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">max_response</div><div class="packet-field-size">16 bits (LE)</div></div>
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">flags</div><div class="packet-field-size">16 bits (LE)</div></div>
+      </div>
+    </div>
+    <p>If <code>flags &amp; 0x01</code> is set, the peripheral supports encryption and the central should initiate the key exchange handshake.</p>
+
+    <h2>Key Exchange Handshake</h2>
+    <p>The handshake uses 4 steps, each carried in a KEY_EXCHANGE control container (<code>control_cmd=0x6</code>):</p>
+
+    <div class="diagram">
+      <pre class="mermaid">
+sequenceDiagram
+    participant C as Central
+    participant P as Peripheral
+    Note over C: Generate ephemeral X25519 keypair
+    C->>P: Step 1: central_x25519_pubkey (32 bytes)
+    Note over P: Generate ephemeral X25519 keypair
+    Note over P: Compute shared_secret = X25519(priv, central_pub)
+    Note over P: Derive session_key = HKDF(shared_secret)
+    Note over P: Sign(ed25519_privkey, central_pub || peripheral_pub)
+    P->>C: Step 2: peripheral_x25519_pubkey + ed25519_pubkey + signature (128 bytes)
+    Note over C: Compute shared_secret = X25519(priv, peripheral_pub)
+    Note over C: Derive session_key = HKDF(shared_secret)
+    Note over C: Verify signature (TOFU for first connection)
+    Note over C: Generate confirmation = encrypt(random, session_key)
+    C->>P: Step 3: encrypted_confirmation (36 bytes)
+    Note over P: Decrypt confirmation to verify session_key match
+    Note over P: Generate confirmation = encrypt(random, session_key)
+    P->>C: Step 4: encrypted_confirmation (36 bytes)
+    Note over C: Decrypt confirmation to verify session_key match
+    Note over C,P: Session key established - all subsequent data is encrypted
+      </pre>
+    </div>
+
+    <h3>Step 1: Central &rarr; Peripheral</h3>
+    <div class="card">
+      <p>The central generates an ephemeral X25519 keypair and sends its public key.</p>
+      <div class="packet-format-wrapper">
+        <div class="packet-format">
+          <div class="packet-field" style="flex:1"><div class="packet-field-name">central_x25519_pubkey</div><div class="packet-field-size">32 bytes</div></div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Step 2: Peripheral &rarr; Central</h3>
+    <div class="card">
+      <p>The peripheral generates its own ephemeral X25519 keypair, computes the shared secret, derives the session key, and signs both public keys with its long-term Ed25519 key.</p>
+      <div class="packet-format-wrapper">
+        <div class="packet-format">
+          <div class="packet-field" style="flex:8"><div class="packet-field-name">peripheral_x25519_pubkey</div><div class="packet-field-size">32 bytes</div></div>
+          <div class="packet-field" style="flex:8"><div class="packet-field-name">ed25519_pubkey</div><div class="packet-field-size">32 bytes</div></div>
+          <div class="packet-field" style="flex:16"><div class="packet-field-name">ed25519_signature</div><div class="packet-field-size">64 bytes</div></div>
+        </div>
+      </div>
+      <p>The signature covers <code>central_x25519_pubkey || peripheral_x25519_pubkey</code> (64 bytes), binding both parties' ephemeral keys to prevent man-in-the-middle attacks.</p>
+    </div>
+
+    <h3>Step 3: Central &rarr; Peripheral</h3>
+    <div class="card">
+      <p>The central verifies the signature, computes the shared secret and session key, then sends an encrypted confirmation to prove it holds the correct session key.</p>
+      <div class="packet-format-wrapper">
+        <div class="packet-format">
+          <div class="packet-field" style="flex:4"><div class="packet-field-name">counter</div><div class="packet-field-size">4 bytes (LE)</div></div>
+          <div class="packet-field" style="flex:4"><div class="packet-field-name">ciphertext</div><div class="packet-field-size">16 bytes</div></div>
+          <div class="packet-field" style="flex:4"><div class="packet-field-name">tag</div><div class="packet-field-size">16 bytes</div></div>
+        </div>
+      </div>
+      <p>The plaintext is 16 random bytes encrypted with AES-128-GCM using the derived session key.</p>
+    </div>
+
+    <h3>Step 4: Peripheral &rarr; Central</h3>
+    <div class="card">
+      <p>The peripheral decrypts Step 3 to verify the session key, then sends its own encrypted confirmation.</p>
+      <div class="packet-format-wrapper">
+        <div class="packet-format">
+          <div class="packet-field" style="flex:4"><div class="packet-field-name">counter</div><div class="packet-field-size">4 bytes (LE)</div></div>
+          <div class="packet-field" style="flex:4"><div class="packet-field-name">ciphertext</div><div class="packet-field-size">16 bytes</div></div>
+          <div class="packet-field" style="flex:4"><div class="packet-field-name">tag</div><div class="packet-field-size">16 bytes</div></div>
+        </div>
+      </div>
+      <p>After the central successfully decrypts Step 4, the handshake is complete and both sides share the same session key.</p>
+    </div>
+
+    <h2>Key Derivation</h2>
+    <div class="card">
+      <p>The session key is derived from the X25519 shared secret using HKDF-SHA256:</p>
+      <pre><code>shared_secret = X25519(my_privkey, peer_pubkey)        # 32 bytes
+session_key   = HKDF-SHA256(
+    salt = None,
+    ikm  = shared_secret,
+    info = b"blerpc-session-key",
+    len  = 16                                           # AES-128 key
+)</code></pre>
+      <p>Both central and peripheral perform the same derivation, arriving at the same 16-byte session key.</p>
+    </div>
+
+    <h2>Session Encryption</h2>
+    <p>After the handshake, all command payloads are encrypted before container splitting:</p>
+
+    <h3>Encrypted Payload Format</h3>
+    <div class="packet-format-wrapper">
+      <div class="packet-format">
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">counter</div><div class="packet-field-size">32 bits (LE)</div></div>
+        <div class="packet-field packet-field-var" style="flex:10"><div class="packet-field-name">ciphertext</div><div class="packet-field-size">variable</div></div>
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">tag</div><div class="packet-field-size">128 bits</div></div>
+      </div>
+    </div>
+
+    <h3>Encryption Process</h3>
+    <div class="card">
+      <ol>
+        <li>Serialize the <a href="protocol.html">CommandPacket</a> (type + name + protobuf data)</li>
+        <li>Increment the TX counter</li>
+        <li>Construct 12-byte nonce: <code>[counter_LE:4][0x00:8]</code></li>
+        <li>Encrypt with AES-128-GCM: <code>ciphertext, tag = AES-GCM(session_key, nonce, plaintext)</code></li>
+        <li>Prepend counter: <code>[counter:4][ciphertext:N][tag:16]</code></li>
+        <li>Split into containers as usual</li>
+      </ol>
+    </div>
+
+    <h3>Decryption Process</h3>
+    <div class="card">
+      <ol>
+        <li>Reassemble containers into full payload</li>
+        <li>Extract counter (first 4 bytes), ciphertext, and tag (last 16 bytes)</li>
+        <li>Verify counter &gt; last received counter (replay detection)</li>
+        <li>Construct nonce and decrypt with AES-128-GCM</li>
+        <li>Parse the decrypted data as a CommandPacket</li>
+      </ol>
+    </div>
+
+    <h2>Replay Detection</h2>
+    <div class="card">
+      <p>Each direction maintains an independent monotonic counter:</p>
+      <ul>
+        <li><strong>TX counter</strong>: Incremented before each encryption. Starts at 0.</li>
+        <li><strong>RX counter</strong>: Tracks the last received counter. Any message with a counter &le; the last received counter is rejected.</li>
+      </ul>
+      <p>This prevents replay attacks where an attacker re-sends previously captured encrypted packets.</p>
+    </div>
+
+    <h2>Trust Model</h2>
+    <div class="card">
+      <h3>Trust On First Use (TOFU)</h3>
+      <p>On the first connection, the central accepts the peripheral&rsquo;s Ed25519 public key and stores it. On subsequent connections, the central verifies that the peripheral presents the same key. If the key changes, the connection is rejected (or the user is prompted).</p>
+      <p>This is similar to SSH&rsquo;s <code>known_hosts</code> mechanism. It provides protection against man-in-the-middle attacks after the first connection without requiring a PKI or certificate authority.</p>
+    </div>
+
+    <h2>Platform Implementation</h2>
+    <table>
+      <thead><tr><th>Platform</th><th>Crypto Library</th><th>Key Exchange</th><th>Session Encryption</th></tr></thead>
+      <tbody>
+        <tr><td>Python</td><td><code>cryptography</code></td><td><code>CentralKeyExchange</code> / <code>PeripheralKeyExchange</code></td><td><code>BlerpcCryptoSession</code></td></tr>
+        <tr><td>Kotlin (Android)</td><td>Java Crypto</td><td><code>CentralKeyExchange</code></td><td><code>BlerpcCryptoSession</code></td></tr>
+        <tr><td>Swift (iOS)</td><td>CryptoKit</td><td><code>CentralKeyExchange</code></td><td><code>BlerpcCryptoSession</code></td></tr>
+        <tr><td>C (Zephyr)</td><td>PSA Crypto (mbedTLS)</td><td><code>blerpc_central_kx_*</code> / <code>blerpc_peripheral_kx_*</code></td><td><code>blerpc_crypto_session</code></td></tr>
+      </tbody>
+    </table>
+
+    <h2>Configuration</h2>
+    <div class="card">
+      <h3>Enabling Encryption</h3>
+      <p>Encryption is enabled on the peripheral side. When enabled, the peripheral advertises encryption support in its capabilities and expects the central to initiate the key exchange.</p>
+      <h3>Zephyr Firmware</h3>
+      <pre><code># prj.conf
+CONFIG_BLERPC_ENCRYPTION=y</code></pre>
+      <h3>Python Peripheral</h3>
+      <pre><code class="language-python"># server.py - encryption is enabled automatically
+# when X25519 and Ed25519 keys are provided
+server = BlerpcServer(
+    x25519_private_key=x25519_privkey,
+    ed25519_private_key=ed25519_privkey,
+)</code></pre>
+    </div>
+  </main>
+
+  <footer></footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

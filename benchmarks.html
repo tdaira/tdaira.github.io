@@ -11,13 +11,13 @@
 
   <main>
     <h1>Benchmark Results</h1>
-    <p>All benchmarks were performed against a <strong>nRF54L15 DK</strong> peripheral running bleRPC firmware. MTU was negotiated to 247 bytes. Connection interval varies by platform.</p>
+    <p>All benchmarks were performed against a <strong>nRF54L15 DK</strong> peripheral running bleRPC firmware with <strong>E2E encryption enabled</strong> (AES-128-GCM). MTU was negotiated to 247 bytes. Connection interval varies by platform.</p>
 
     <h2>Throughput Comparison</h2>
     <div class="grid">
       <div class="card" style="text-align:center">
         <p style="margin-bottom:0.3rem">Python (macOS)</p>
-        <div class="bench-value">21.8</div>
+        <div class="bench-value">30.3</div>
         <div class="bench-unit">KB/s flash read</div>
         <p style="margin-top:0.5rem"><span class="badge badge-blue">CI: 15ms</span></p>
       </div>
@@ -40,30 +40,50 @@
     <h3>Python Central (macOS, bleak)</h3>
     <p>Connection interval: 15ms (macOS negotiation) &mdash; <a href="https://github.com/tdaira/blerpc/blob/main/central_py/tests/test_integration.py">test code</a></p>
     <table>
-      <thead><tr><th>Test</th><th>Result</th><th>Details</th></tr></thead>
+      <thead><tr><th>Benchmark</th><th>Result</th><th>Details</th></tr></thead>
       <tbody>
-        <tr><td>flash_read_throughput</td><td><strong>21.8 KB/s</strong></td><td>10x 8192 bytes, 366.3 ms/call</td></tr>
-        <tr><td>flash_read_overhead</td><td><strong>38.6 ms/call</strong></td><td>1 byte x 20 calls</td></tr>
+        <tr><td>flash_read_throughput</td><td><strong>30.3 KB/s</strong></td><td>10x 8192 bytes, 264.2 ms/call</td></tr>
+        <tr><td>flash_read_overhead</td><td><strong>60.1 ms/call</strong></td><td>1 byte x 20 calls</td></tr>
+        <tr><td>echo_roundtrip</td><td><strong>60.6 ms/call</strong></td><td>50 calls</td></tr>
+        <tr><td>data_write_throughput</td><td><strong>3.3 KB/s</strong></td><td>200 bytes x 20 calls, 59.9 ms/call</td></tr>
+        <tr><td>counter_stream (P&rarr;C)</td><td><strong>5.8 ms/item</strong></td><td>20 items in 117 ms</td></tr>
+        <tr><td>counter_upload (C&rarr;P)</td><td><strong>7.4 ms/item</strong></td><td>20 items in 147 ms</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Functional Test</th><th>Result</th><th>Details</th></tr></thead>
+      <tbody>
         <tr><td>echo_basic</td><td><span class="badge badge-green">PASS</span></td><td></td></tr>
         <tr><td>echo_empty</td><td><span class="badge badge-green">PASS</span></td><td></td></tr>
         <tr><td>echo_max_length</td><td><span class="badge badge-green">PASS</span></td><td>256-char string</td></tr>
-        <tr><td>flash_read_basic</td><td><span class="badge badge-green">PASS</span></td><td>64 bytes</td></tr>
+        <tr><td>flash_read_basic</td><td><span class="badge badge-green">PASS</span></td><td>16 bytes</td></tr>
         <tr><td>flash_read_8kb</td><td><span class="badge badge-green">PASS</span></td><td>8192 bytes</td></tr>
-        <tr><td>multi_container_echo</td><td><span class="badge badge-green">PASS</span></td><td>Multi-container request</td></tr>
+        <tr><td>data_write_basic</td><td><span class="badge badge-green">PASS</span></td><td>1024 bytes</td></tr>
+        <tr><td>data_write_8kb</td><td><span class="badge badge-green">PASS</span></td><td>8192 bytes</td></tr>
+        <tr><td>multi_container_echo</td><td><span class="badge badge-green">PASS</span></td><td>250-char string</td></tr>
+        <tr><td>counter_stream</td><td><span class="badge badge-green">PASS</span></td><td>5 items</td></tr>
+        <tr><td>counter_stream_large</td><td><span class="badge badge-green">PASS</span></td><td>20 items</td></tr>
+        <tr><td>counter_upload</td><td><span class="badge badge-green">PASS</span></td><td>5 items</td></tr>
+        <tr><td>counter_upload_large</td><td><span class="badge badge-green">PASS</span></td><td>20 items</td></tr>
       </tbody>
     </table>
 
     <h3>iOS Central (iPhone 16, CoreBluetooth)</h3>
     <p>Connection interval: 30ms (iOS negotiation) &mdash; <a href="https://github.com/tdaira/blerpc/blob/main/central_ios/BlerpcCentral/Test/TestRunner.swift">test code</a></p>
     <table>
-      <thead><tr><th>Test</th><th>Result</th><th>Details</th></tr></thead>
+      <thead><tr><th>Benchmark</th><th>Result</th><th>Details</th></tr></thead>
       <tbody>
         <tr><td>flash_read_throughput</td><td><strong>32.1 KB/s</strong></td><td>10x 8192 bytes, 249.0 ms/call</td></tr>
         <tr><td>flash_read_overhead</td><td><strong>62.3 ms/call</strong></td><td>1 byte x 20 calls</td></tr>
         <tr><td>echo_roundtrip</td><td><strong>60.0 ms/call</strong></td><td>50 calls</td></tr>
         <tr><td>data_write_throughput</td><td><strong>3.3 KB/s</strong></td><td>200 bytes x 20 calls, 60.0 ms/call</td></tr>
-        <tr><td>counter_stream (P&rarr;C)</td><td><strong>6.1 ms/item</strong></td><td>20 items in 121ms</td></tr>
-        <tr><td>counter_upload (C&rarr;P)</td><td><strong>4.5 ms/item</strong></td><td>20 items in 91ms</td></tr>
+        <tr><td>counter_stream (P&rarr;C)</td><td><strong>6.1 ms/item</strong></td><td>20 items in 121 ms</td></tr>
+        <tr><td>counter_upload (C&rarr;P)</td><td><strong>4.5 ms/item</strong></td><td>20 items in 91 ms</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Functional Test</th><th>Result</th><th>Details</th></tr></thead>
+      <tbody>
         <tr><td>echo_basic</td><td><span class="badge badge-green">PASS</span></td><td></td></tr>
         <tr><td>echo_empty</td><td><span class="badge badge-green">PASS</span></td><td></td></tr>
         <tr><td>flash_read_basic</td><td><span class="badge badge-green">PASS</span></td><td>64 bytes</td></tr>
@@ -77,14 +97,19 @@
     <h3>Android Central (Pixel 5)</h3>
     <p>Connection interval: 30ms (Android negotiation) &mdash; <a href="https://github.com/tdaira/blerpc/blob/main/central_android/app/src/main/java/com/blerpc/android/test/TestRunner.kt">test code</a></p>
     <table>
-      <thead><tr><th>Test</th><th>Result</th><th>Details</th></tr></thead>
+      <thead><tr><th>Benchmark</th><th>Result</th><th>Details</th></tr></thead>
       <tbody>
         <tr><td>flash_read_throughput</td><td><strong>59.0 KB/s</strong></td><td>10x 8192 bytes, 135.7 ms/call</td></tr>
         <tr><td>flash_read_overhead</td><td><strong>90.4 ms/call</strong></td><td>1 byte x 20 calls</td></tr>
         <tr><td>echo_roundtrip</td><td><strong>62.2 ms/call</strong></td><td>50 calls</td></tr>
         <tr><td>data_write_throughput</td><td><strong>3.2 KB/s</strong></td><td>200 bytes x 20 calls, 60.3 ms/call</td></tr>
-        <tr><td>counter_stream (P&rarr;C)</td><td><strong>3.7 ms/item</strong></td><td>20 items in 73ms</td></tr>
-        <tr><td>counter_upload (C&rarr;P)</td><td><strong>5.1 ms/item</strong></td><td>20 items in 101ms</td></tr>
+        <tr><td>counter_stream (P&rarr;C)</td><td><strong>3.7 ms/item</strong></td><td>20 items in 73 ms</td></tr>
+        <tr><td>counter_upload (C&rarr;P)</td><td><strong>5.1 ms/item</strong></td><td>20 items in 101 ms</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Functional Test</th><th>Result</th><th>Details</th></tr></thead>
+      <tbody>
         <tr><td>echo_basic</td><td><span class="badge badge-green">PASS</span></td><td></td></tr>
         <tr><td>echo_empty</td><td><span class="badge badge-green">PASS</span></td><td></td></tr>
         <tr><td>flash_read_basic</td><td><span class="badge badge-green">PASS</span></td><td>64 bytes</td></tr>
@@ -105,6 +130,10 @@
         <li><strong>Android (Pixel 5)</strong>: CI = 30ms &rarr; ~60ms round-trip, but highest throughput due to more packets per connection event</li>
       </ul>
       <p>The peripheral advertises preferred CI of 15&ndash;30ms (<code>PREF_MIN_INT=12, PREF_MAX_INT=24</code>). The actual CI is determined by the Central&rsquo;s OS.</p>
+    </div>
+    <div class="card">
+      <h3>Encryption Overhead</h3>
+      <p>E2E encryption adds <strong>20 bytes</strong> per transaction (4-byte counter + 16-byte AES-GCM tag). For large payloads (8 KB), this overhead is negligible (&lt;0.3%). The AES-128-GCM encryption/decryption itself is hardware-accelerated on modern mobile devices and takes &lt;1ms even for 8 KB payloads.</p>
     </div>
     <div class="card">
       <h3>Throughput Optimizations</h3>

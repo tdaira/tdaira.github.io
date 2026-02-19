@@ -11,13 +11,14 @@
 
   <main>
     <h1>Protocol Specification</h1>
-    <p>bleRPC uses a two-layer protocol stack on top of BLE GATT. The <strong>Command Layer</strong> wraps Protocol Buffers payloads with RPC metadata, and the <strong>Container Layer</strong> fragments them into MTU-sized packets for BLE transmission.</p>
+    <p>bleRPC uses a layered protocol stack on top of BLE GATT. The <strong>Command Layer</strong> wraps Protocol Buffers payloads with RPC metadata, the optional <strong>Encryption Layer</strong> encrypts the serialized command, and the <strong>Container Layer</strong> fragments them into MTU-sized packets for BLE transmission.</p>
 
     <div class="diagram">
       <pre class="mermaid">
 graph TD
     A["Application"] --> B["Command Layer&lt;br/&gt;Protobuf encode/decode + command metadata"]
-    B --> C["Container Layer&lt;br/&gt;MTU-based split/reassemble + sequencing"]
+    B --> E["Encryption Layer (optional)&lt;br/&gt;AES-128-GCM encrypt/decrypt"]
+    E --> C["Container Layer&lt;br/&gt;MTU-based split/reassemble + sequencing"]
     C --> D["BLE GATT&lt;br/&gt;(single characteristic)"]
       </pre>
     </div>
@@ -94,7 +95,7 @@ graph TD
     </div>
     <ul>
       <li><code>type</code>: <code>00</code> = first, <code>01</code> = subsequent, <code>11</code> = control</li>
-      <li><code>control_cmd</code>: <code>0x0</code>&ndash;<code>0x5</code> (only valid when type=<code>11</code>)</li>
+      <li><code>control_cmd</code>: <code>0x0</code>&ndash;<code>0x6</code> (only valid when type=<code>11</code>)</li>
       <li><code>reserved</code>: zero-filled</li>
     </ul>
 
@@ -143,7 +144,7 @@ graph TD
     </div>
 
     <h3>Capability Sharing (control_cmd=0x4)</h3>
-    <p>Allows the peripheral to communicate its buffer constraints to the central.</p>
+    <p>Allows the peripheral to communicate its buffer constraints and feature flags to the central.</p>
     <div class="card">
       <h3>Request (Central &rarr; Peripheral)</h3>
       <table>
@@ -160,11 +161,13 @@ graph TD
         <tbody>
           <tr><td>type</td><td><code>0b11</code> (control)</td></tr>
           <tr><td>control_cmd</td><td><code>0x4</code></td></tr>
-          <tr><td>payload_len</td><td><code>0x04</code></td></tr>
+          <tr><td>payload_len</td><td><code>0x06</code></td></tr>
           <tr><td>payload[0:2]</td><td><code>max_request_payload_size</code> (16-bit LE)</td></tr>
           <tr><td>payload[2:4]</td><td><code>max_response_payload_size</code> (16-bit LE)</td></tr>
+          <tr><td>payload[4:6]</td><td><code>flags</code> (16-bit LE) &mdash; bit 0: encryption supported</td></tr>
         </tbody>
       </table>
+      <p>When <code>flags</code> is absent (4-byte payload for backward compatibility), no optional features are available.</p>
     </div>
 
     <h3>Stream End (control_cmd=0x2, 0x3)</h3>
@@ -197,6 +200,40 @@ graph TD
         <li><code>0x01</code> &mdash; <strong>RESPONSE_TOO_LARGE</strong>: Response payload exceeds <code>max_response_payload_size</code></li>
       </ul>
     </div>
+
+    <h3>Key Exchange (control_cmd=0x6)</h3>
+    <p>Carries <a href="encryption.html">key exchange handshake</a> payloads for establishing an encrypted session. Used when the peripheral advertises encryption support via the capabilities <code>flags</code> field.</p>
+    <div class="card">
+      <table>
+        <thead><tr><th>Field</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>type</td><td><code>0b11</code> (control)</td></tr>
+          <tr><td>control_cmd</td><td><code>0x6</code></td></tr>
+          <tr><td>payload_len</td><td>variable</td></tr>
+          <tr><td>payload</td><td>Key exchange step data (see <a href="encryption.html">Encryption</a>)</td></tr>
+        </tbody>
+      </table>
+      <p>Four containers are exchanged (Step 1&ndash;4) to complete the handshake. After completion, all subsequent data containers carry encrypted payloads.</p>
+    </div>
+
+    <h3>Encrypted Data Container</h3>
+    <p>When encryption is active, the payload of data containers (FIRST / SUBSEQUENT) is replaced by the encrypted form of the serialized command:</p>
+    <div class="packet-format-wrapper">
+      <div class="packet-format">
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">counter</div><div class="packet-field-size">32 bits (LE)</div></div>
+        <div class="packet-field packet-field-var" style="flex:10"><div class="packet-field-name">ciphertext</div><div class="packet-field-size">variable</div></div>
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">tag</div><div class="packet-field-size">128 bits</div></div>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>Field</th><th>Size</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>counter</code></td><td>4 bytes</td><td>Monotonically increasing counter (little-endian). Used as AES-GCM nonce and for replay detection.</td></tr>
+        <tr><td><code>ciphertext</code></td><td>N bytes</td><td>AES-128-GCM encrypted serialized command</td></tr>
+        <tr><td><code>tag</code></td><td>16 bytes</td><td>AES-GCM authentication tag</td></tr>
+      </tbody>
+    </table>
+    <p>Total overhead: <strong>20 bytes</strong> (4 counter + 16 tag). The ciphertext is then split into containers as usual.</p>
 
     <h2>Command Layer</h2>
     <p>The command layer wraps Protocol Buffers-encoded data with RPC metadata. Commands are identified by name (ASCII string), enabling flexible, human-readable dispatch.</p>
@@ -305,7 +342,14 @@ sequenceDiagram
     C->>P: Timeout Request (ctrl)
     P->>C: Timeout Response (e.g. 100ms)
     C->>P: Capability Request (ctrl)
-    P->>C: Capability Response (max_req, max_resp)
+    P->>C: Capability Response (max_req, max_resp, flags)
+    opt Encryption (flags &amp; 0x01)
+        C->>P: Key Exchange Step 1 (ctrl 0x6)
+        P->>C: Key Exchange Step 2 (ctrl 0x6)
+        C->>P: Key Exchange Step 3 (ctrl 0x6)
+        P->>C: Key Exchange Step 4 (ctrl 0x6)
+        Note over C,P: AES-128-GCM session established
+    end
     Note over C,P: Ready for RPC calls
       </pre>
     </div>
