@@ -68,7 +68,7 @@ go build -o generate-handlers .</code></pre>
       <h3>Dependencies</h3>
       <p>Add to your Xcode project via Swift Package Manager:</p>
       <pre><code class="language-swift">// Package.swift or Xcode > File > Add Package Dependencies
-https://github.com/tdaira/blerpc-protocol-swift  (from: 0.2.0)
+https://github.com/tdaira/blerpc-protocol-swift  (from: 0.5.0)
 https://github.com/apple/swift-protobuf.git      (from: 1.28.0)</code></pre>
       <h3>Generate Protobuf types</h3>
       <pre><code class="language-bash">brew install swift-protobuf
@@ -105,7 +105,7 @@ client.disconnect()</code></pre>
 }
 
 dependencies {
-    implementation("com.blerpc:blerpc-protocol-kt:0.2.0")
+    implementation("com.blerpc:blerpc-protocol-kt:0.5.0")
 }</code></pre>
       <h3>Usage</h3>
       <pre><code class="language-kotlin">val client = BlerpcClient(context)

@@ -203,10 +203,9 @@ session_key   = HKDF-SHA256(
       <pre><code># prj.conf
 CONFIG_BLERPC_ENCRYPTION=y</code></pre>
       <h3>Python Peripheral</h3>
-      <pre><code class="language-python"># server.py - encryption is enabled automatically
-# when X25519 and Ed25519 keys are provided (hex strings)
+      <pre><code class="language-python"># server.py - encryption is enabled when an Ed25519 signing key is provided.
+# X25519 keypairs are generated ephemerally for each connection.
 peripheral = BlerpcPeripheral(
-    x25519_private_key_hex="...",
     ed25519_private_key_hex="...",
 )</code></pre>
     </div>
