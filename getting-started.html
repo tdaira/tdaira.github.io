@@ -57,6 +57,7 @@ go build -o generate-handlers .</code></pre>
           <tr><td><code>central_py/blerpc/generated/generated_client.py</code></td><td>Python client mixin</td></tr>
           <tr><td><code>central_android/.../GeneratedClient.kt</code></td><td>Kotlin abstract client</td></tr>
           <tr><td><code>central_ios/.../GeneratedClient.swift</code></td><td>Swift client protocol extension</td></tr>
+          <tr><td><code>central_flutter/.../generated_client.dart</code></td><td>Dart client mixin</td></tr>
         </tbody>
       </table>
     </div>
@@ -144,6 +145,36 @@ flash = await client.flash_read(address=0, length=8192)
 print(len(flash.data))  # 8192
 
 await client.disconnect()</code></pre>
+    </div>
+
+    <h3>Flutter (Dart)</h3>
+    <div class="card">
+      <h3>Dependencies</h3>
+      <p>Add to your <code>pubspec.yaml</code>:</p>
+      <pre><code class="language-yaml">dependencies:
+  blerpc_protocol: ^0.6.0
+  flutter_blue_plus: ^1.35.0
+  protobuf: ^6.0.0</code></pre>
+      <h3>Generate Protobuf types</h3>
+      <pre><code class="language-bash">dart pub global activate protoc_plugin
+protoc --dart_out=lib/proto/ \
+  -I proto/ proto/blerpc.proto</code></pre>
+      <h3>Usage</h3>
+      <pre><code class="language-dart">final client = BlerpcClient();
+
+// Scan for peripherals
+final devices = await client.scan();
+await client.connect(devices[0]);
+
+// Type-safe RPC call
+final response = await client.echo(message: 'hello');
+print(response.message);  // "hello"
+
+// Read flash data
+final flash = await client.flashRead(address: 0, length: 8192);
+print(flash.data.length);  // 8192
+
+client.disconnect();</code></pre>
     </div>
 
     <h3>Zephyr Peripheral (C)</h3>

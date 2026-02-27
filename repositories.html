@@ -26,6 +26,7 @@
           <tr><td><code>central_fw/</code></td><td>Zephyr central firmware (C) for device-to-device communication</td></tr>
           <tr><td><code>central_android/</code></td><td>Android central app (Kotlin) with test runner</td></tr>
           <tr><td><code>central_ios/</code></td><td>iOS central app (Swift) with test runner</td></tr>
+          <tr><td><code>central_flutter/</code></td><td>Flutter central app (Dart) with test runner</td></tr>
           <tr><td><code>proto/</code></td><td>Protocol Buffers definitions (<code>blerpc.proto</code>)</td></tr>
           <tr><td><code>tools/generate-handlers/</code></td><td>Code generator (Go) &mdash; generates handlers and clients for all languages</td></tr>
           <tr><td><code>boards/</code></td><td>Custom board definitions (EFR32xG22E)</td></tr>
@@ -59,6 +60,13 @@
         <p>Kotlin library for Android. Published to GitHub Packages (Maven).</p>
         <pre><code class="language-kotlin">implementation("com.blerpc:blerpc-protocol-kt:0.5.0")</code></pre>
       </div>
+
+      <div class="card">
+        <h3><a href="https://github.com/tdaira/blerpc-protocol-dart">blerpc-protocol-dart</a></h3>
+        <p><span class="badge badge-blue">Dart</span></p>
+        <p>Pure Dart library for Flutter. Published to <a href="https://pub.dev/packages/blerpc_protocol">pub.dev</a>. Uses the <code>cryptography</code> package for encryption.</p>
+        <pre><code class="language-yaml">blerpc_protocol: ^0.6.0</code></pre>
+      </div>
     </div>
 
     <h2>Architecture Overview</h2>
@@ -83,13 +91,17 @@
             |       |     GeneratedClient.kt          |
             |       |                                 |
             |       +---> central_ios/.../             |
-            |             GeneratedClient.swift        |
+            |       |     GeneratedClient.swift        |
+            |       |                                 |
+            |       +---> central_flutter/.../         |
+            |             generated_client.dart        |
             |                                         |
             +-----------------------------------------+
-                    |           |            |
-                    v           v            v
-           blerpc-protocol  blerpc-     blerpc-
-           (Python + C)     protocol-kt protocol-swift
+                    |           |            |          |
+                    v           v            v          v
+           blerpc-protocol  blerpc-     blerpc-    blerpc-
+           (Python + C)     protocol-kt protocol-  protocol-dart
+                                        swift
 </pre>
     </div>
 
@@ -99,10 +111,11 @@
       <table>
         <thead><tr><th>Repository</th><th>CI Checks</th></tr></thead>
         <tbody>
-          <tr><td>blerpc</td><td>Python tests + ruff lint, C lint (clang-format), Go lint + build, iOS build, Android build</td></tr>
+          <tr><td>blerpc</td><td>Python tests + ruff lint, C lint (clang-format), Go lint + build, iOS build, Android build, Flutter build</td></tr>
           <tr><td>blerpc-protocol</td><td>Python tests + lint, C lint + tests</td></tr>
           <tr><td>blerpc-protocol-swift</td><td>swift build, swift test, SwiftLint</td></tr>
           <tr><td>blerpc-protocol-kt</td><td>Gradle test, ktlint</td></tr>
+          <tr><td>blerpc-protocol-dart</td><td>dart analyze, dart test, auto-publish to pub.dev</td></tr>
         </tbody>
       </table>
     </div>
