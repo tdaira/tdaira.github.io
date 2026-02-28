@@ -61,7 +61,7 @@
     <div class="diagram">
       <pre class="mermaid" id="sequence-diagram">
 sequenceDiagram
-    participant C as Central&lt;br/&gt;(iOS / Android / Flutter / Python)
+    participant C as Central&lt;br/&gt;(iOS / Android / Flutter / RN / Python)
     participant P as Peripheral&lt;br/&gt;(Zephyr / Python)
     Note over C: Protobuf encode + Command wrap
     Note over C: Encrypt (if enabled)
@@ -86,6 +86,7 @@ sequenceDiagram
         <tr><td>iOS</td><td>Swift</td><td>CoreBluetooth</td><td><span class="badge badge-green">Stable</span></td></tr>
         <tr><td>Android</td><td>Kotlin</td><td>Android BLE</td><td><span class="badge badge-green">Stable</span></td></tr>
         <tr><td>iOS / Android</td><td>Dart (Flutter)</td><td>flutter_blue_plus</td><td><span class="badge badge-green">Stable</span></td></tr>
+        <tr><td>iOS / Android</td><td>TypeScript (React Native)</td><td>react-native-ble-plx</td><td><span class="badge badge-green">Stable</span></td></tr>
         <tr><td>macOS / Linux</td><td>Python</td><td>bleak</td><td><span class="badge badge-green">Stable</span></td></tr>
         <tr><td>Zephyr (nRF54L15)</td><td>C</td><td>Zephyr BLE</td><td><span class="badge badge-green">Stable</span></td></tr>
       </tbody>
@@ -109,6 +110,7 @@ sequenceDiagram
         <tr><td>Kotlin</td><td><a href="https://github.com/tdaira/blerpc-protocol-kt">blerpc-protocol-kt</a></td><td>Protobuf JavaLite</td></tr>
         <tr><td>Dart</td><td><a href="https://pub.dev/packages/blerpc_protocol">blerpc-protocol-dart</a></td><td>cryptography</td></tr>
         <tr><td>Python</td><td><a href="https://github.com/tdaira/blerpc-protocol">blerpc-protocol</a></td><td>cryptography</td></tr>
+        <tr><td>TypeScript</td><td><a href="https://github.com/tdaira/blerpc-protocol-rn">blerpc-protocol-rn</a></td><td>@noble/ciphers + @noble/curves + @noble/hashes</td></tr>
         <tr><td>C</td><td><a href="https://github.com/tdaira/blerpc-protocol">blerpc-protocol/c</a></td><td>None (PSA Crypto on Zephyr)</td></tr>
       </tbody>
     </table>

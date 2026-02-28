@@ -58,6 +58,9 @@ go build -o generate-handlers .</code></pre>
           <tr><td><code>central_android/.../GeneratedClient.kt</code></td><td>Kotlin abstract client</td></tr>
           <tr><td><code>central_ios/.../GeneratedClient.swift</code></td><td>Swift client protocol extension</td></tr>
           <tr><td><code>central_flutter/.../generated_client.dart</code></td><td>Dart client mixin</td></tr>
+          <tr><td><code>central_rn/.../GeneratedClient.ts</code></td><td>TypeScript abstract client (React Native)</td></tr>
+          <tr><td><code>central_fw/src/generated_client.h</code></td><td>C central client declarations</td></tr>
+          <tr><td><code>central_fw/src/generated_client.c</code></td><td>C central client implementation</td></tr>
         </tbody>
       </table>
     </div>
@@ -175,6 +178,74 @@ final flash = await client.flashRead(address: 0, length: 8192);
 print(flash.data.length);  // 8192
 
 client.disconnect();</code></pre>
+    </div>
+
+    <h3>React Native (TypeScript)</h3>
+    <div class="card">
+      <h3>Dependencies</h3>
+      <p>Add to your <code>package.json</code>:</p>
+      <pre><code class="language-json">{
+  "dependencies": {
+    "@blerpc/protocol-rn": "file:../blerpc-protocol-rn",
+    "protobufjs": "^7.4.0",
+    "react-native-ble-plx": "^3.2.1",
+    "react-native-get-random-values": "^1.11.0",
+    "buffer": "^6.0.3",
+    "fast-text-encoding": "^1.0.6",
+    "@noble/ciphers": "^1.3.0",
+    "@noble/curves": "^1.9.7",
+    "@noble/hashes": "^1.8.0"
+  }
+}</code></pre>
+      <h3>Generate Protobuf types</h3>
+      <pre><code class="language-bash">npx pbjs -t static-module -w commonjs \
+  -o src/proto/blerpc.js ../proto/blerpc.proto
+npx pbts -o src/proto/blerpc.d.ts src/proto/blerpc.js</code></pre>
+      <h3>Usage</h3>
+      <pre><code class="language-typescript">import { BlerpcClient } from './client/BlerpcClient';
+import { BleTransport } from './ble/BleTransport';
+
+const transport = new BleTransport();
+const devices = await transport.scan();
+const client = new BlerpcClient(transport);
+await client.connect(devices[0]);
+
+// Type-safe RPC call
+const response = await client.echo({ message: 'hello' });
+console.log(response.message);  // "hello"
+
+// Read flash data
+const flash = await client.flashRead({ address: 0, length: 8192 });
+console.log(flash.data.length);  // 8192
+
+client.disconnect();</code></pre>
+    </div>
+
+    <h3>Zephyr Central (C)</h3>
+    <div class="card">
+      <h3>Generated Client</h3>
+      <p>The code generator creates <code>generated_client.h</code> and <code>generated_client.c</code> with typed wrapper functions for all commands. You implement three transport functions (<code>blerpc_rpc_call</code>, <code>blerpc_stream_receive</code>, <code>blerpc_stream_send</code>) and call the generated API:</p>
+      <pre><code class="language-c">#include "generated_client.h"
+
+// Type-safe RPC call — protobuf encode/decode is handled
+blerpc_EchoResponse resp;
+int ret = blerpc_echo("Hello from central!", &amp;resp);
+if (ret == 0) {
+    LOG_INF("Echo: %s", resp.message);
+}
+
+// Read flash data (FT_CALLBACK fields handled automatically)
+blerpc_FlashReadResponse flash;
+uint8_t data_buf[8192];
+size_t data_len;
+ret = blerpc_flash_read(0, 8192, &amp;flash, data_buf, sizeof(data_buf), &amp;data_len);
+
+// P2C streaming
+blerpc_CounterStreamResponse results[20];
+size_t count;
+ret = blerpc_counter_stream(20, results, 20, &amp;count);</code></pre>
+      <h3>Build</h3>
+      <pre><code class="language-bash">west build -b nrf54l15dk/nrf54l15/cpuapp central_fw</code></pre>
     </div>
 
     <h3>Zephyr Peripheral (C)</h3>

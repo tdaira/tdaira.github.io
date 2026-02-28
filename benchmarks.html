@@ -33,6 +33,18 @@
         <div class="bench-unit">KB/s flash read</div>
         <p style="margin-top:0.5rem"><span class="badge badge-blue">CI: 30ms</span></p>
       </div>
+      <div class="card" style="text-align:center">
+        <p style="margin-bottom:0.3rem">React Native iOS (iPhone 16)</p>
+        <div class="bench-value">28.2</div>
+        <div class="bench-unit">KB/s flash read</div>
+        <p style="margin-top:0.5rem"><span class="badge badge-blue">CI: 30ms</span></p>
+      </div>
+      <div class="card" style="text-align:center">
+        <p style="margin-bottom:0.3rem">React Native Android (Pixel 5)</p>
+        <div class="bench-value">41.0</div>
+        <div class="bench-unit">KB/s flash read</div>
+        <p style="margin-top:0.5rem"><span class="badge badge-blue">CI: 30ms</span></p>
+      </div>
     </div>
 
     <h2>Detailed Results by Platform</h2>
@@ -120,6 +132,55 @@
       </tbody>
     </table>
 
+    <h3>React Native iOS (iPhone 16, react-native-ble-plx)</h3>
+    <p>Connection interval: 30ms (iOS negotiation) &mdash; <a href="https://github.com/tdaira/blerpc/blob/main/central_rn/src/test/TestRunner.ts">test code</a></p>
+    <table>
+      <thead><tr><th>Benchmark</th><th>Result</th><th>Details</th></tr></thead>
+      <tbody>
+        <tr><td>flash_read_throughput</td><td><strong>28.2 KB/s</strong></td><td>10x 8192 bytes</td></tr>
+        <tr><td>echo_roundtrip</td><td><strong>60.1 ms/call</strong></td><td>50 calls</td></tr>
+        <tr><td>data_write_throughput</td><td><strong>3.3 KB/s</strong></td><td>200 bytes x 20 calls</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Functional Test</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>echo_basic</td><td><span class="badge badge-green">PASS</span></td></tr>
+        <tr><td>echo_empty</td><td><span class="badge badge-green">PASS</span></td></tr>
+        <tr><td>flash_read_basic</td><td><span class="badge badge-green">PASS</span></td></tr>
+        <tr><td>flash_read_8kb</td><td><span class="badge badge-green">PASS</span></td></tr>
+        <tr><td>data_write</td><td><span class="badge badge-green">PASS</span></td></tr>
+        <tr><td>counter_stream</td><td><span class="badge badge-green">PASS</span></td></tr>
+        <tr><td>counter_upload</td><td><span class="badge badge-green">PASS</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3>React Native Android (Pixel 5, react-native-ble-plx)</h3>
+    <p>Connection interval: 30ms (Android negotiation) &mdash; <a href="https://github.com/tdaira/blerpc/blob/main/central_rn/src/test/TestRunner.ts">test code</a></p>
+    <table>
+      <thead><tr><th>Benchmark</th><th>Result</th><th>Details</th></tr></thead>
+      <tbody>
+        <tr><td>flash_read_throughput</td><td><strong>41.0 KB/s</strong></td><td>10x 8192 bytes, 195.1 ms/call</td></tr>
+        <tr><td>flash_read_overhead</td><td><strong>75.2 ms/call</strong></td><td>1 byte x 20 calls</td></tr>
+        <tr><td>echo_roundtrip</td><td><strong>85.2 ms/call</strong></td><td>50 calls</td></tr>
+        <tr><td>data_write_throughput</td><td><strong>2.3 KB/s</strong></td><td>200 bytes x 20 calls, 85.7 ms/call</td></tr>
+        <tr><td>counter_stream (P&rarr;C)</td><td><strong>6.0 ms/item</strong></td><td>20 items in 121 ms</td></tr>
+        <tr><td>counter_upload (C&rarr;P)</td><td><strong>17.5 ms/item</strong></td><td>20 items in 350 ms</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>Functional Test</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>echo_basic</td><td><span class="badge badge-green">PASS</span></td></tr>
+        <tr><td>echo_empty</td><td><span class="badge badge-green">PASS</span></td></tr>
+        <tr><td>flash_read_basic</td><td><span class="badge badge-green">PASS</span></td></tr>
+        <tr><td>flash_read_8kb</td><td><span class="badge badge-green">PASS</span></td></tr>
+        <tr><td>data_write</td><td><span class="badge badge-green">PASS</span></td></tr>
+        <tr><td>counter_stream</td><td><span class="badge badge-green">PASS</span></td></tr>
+        <tr><td>counter_upload</td><td><span class="badge badge-green">PASS</span></td></tr>
+      </tbody>
+    </table>
+
     <h2>Performance Notes</h2>
     <div class="card">
       <h3>Connection Interval Impact</h3>
@@ -128,6 +189,7 @@
         <li><strong>macOS (bleak)</strong>: CI = 15ms &rarr; ~30ms round-trip</li>
         <li><strong>iOS (iPhone 16)</strong>: CI = 30ms &rarr; ~60ms round-trip</li>
         <li><strong>Android (Pixel 5)</strong>: CI = 30ms &rarr; ~60ms round-trip, but highest throughput due to more packets per connection event</li>
+        <li><strong>React Native</strong>: Same BLE stack as native (CoreBluetooth on iOS, Android BLE on Android), but the JS bridge adds ~10&ndash;20ms overhead per round-trip compared to native clients</li>
       </ul>
       <p>The peripheral advertises preferred CI of 15&ndash;30ms (<code>PREF_MIN_INT=12, PREF_MAX_INT=24</code>). The actual CI is determined by the Central&rsquo;s OS.</p>
     </div>

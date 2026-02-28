@@ -27,6 +27,7 @@
           <tr><td><code>central_android/</code></td><td>Android central app (Kotlin) with test runner</td></tr>
           <tr><td><code>central_ios/</code></td><td>iOS central app (Swift) with test runner</td></tr>
           <tr><td><code>central_flutter/</code></td><td>Flutter central app (Dart) with test runner</td></tr>
+          <tr><td><code>central_rn/</code></td><td>React Native central app (TypeScript) with test runner</td></tr>
           <tr><td><code>proto/</code></td><td>Protocol Buffers definitions (<code>blerpc.proto</code>)</td></tr>
           <tr><td><code>tools/generate-handlers/</code></td><td>Code generator (Go) &mdash; generates handlers and clients for all languages</td></tr>
           <tr><td><code>boards/</code></td><td>Custom board definitions (EFR32xG22E)</td></tr>
@@ -67,6 +68,13 @@
         <p>Pure Dart library for Flutter. Published to <a href="https://pub.dev/packages/blerpc_protocol">pub.dev</a>. Uses the <code>cryptography</code> package for encryption.</p>
         <pre><code class="language-yaml">blerpc_protocol: ^0.6.0</code></pre>
       </div>
+
+      <div class="card">
+        <h3><a href="https://github.com/tdaira/blerpc-protocol-rn">blerpc-protocol-rn</a></h3>
+        <p><span class="badge badge-blue">TypeScript</span></p>
+        <p>TypeScript library for React Native. Uses <code>@noble/ciphers</code>, <code>@noble/curves</code>, and <code>@noble/hashes</code> for encryption (pure JS, no native dependencies).</p>
+        <pre><code class="language-json">"@blerpc/protocol-rn": "file:../blerpc-protocol-rn"</code></pre>
+      </div>
     </div>
 
     <h2>Architecture Overview</h2>
@@ -94,14 +102,20 @@
             |       |     GeneratedClient.swift        |
             |       |                                 |
             |       +---> central_flutter/.../         |
-            |             generated_client.dart        |
+            |       |     generated_client.dart        |
+            |       |                                 |
+            |       +---> central_rn/.../              |
+            |       |     GeneratedClient.ts           |
+            |       |                                 |
+            |       +---> central_fw/src/              |
+            |             generated_client.{c,h}       |
             |                                         |
             +-----------------------------------------+
-                    |           |            |          |
-                    v           v            v          v
-           blerpc-protocol  blerpc-     blerpc-    blerpc-
-           (Python + C)     protocol-kt protocol-  protocol-dart
-                                        swift
+                    |           |            |     |     |
+                    v           v            v     v     v
+           blerpc-protocol  blerpc-     blerpc- blerpc- blerpc-
+           (Python + C)     protocol-kt proto-  proto-  proto-
+                                        swift   dart    rn
 </pre>
     </div>
 
