@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Repositories - bleRPC</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="alternate" hreflang="en" href="https://blerpc.net/repositories.html">
+  <link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/repositories.html">
+  <link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/repositories.html">
+  <link rel="alternate" hreflang="x-default" href="https://blerpc.net/repositories.html">
+</head>
+<body>
+  <header></header>
+
+  <main>
+    <h1>Repositories</h1>
+    <p>bleRPC is organized into a main monorepo and several protocol library packages for each supported language.</p>
+
+    <h2>Main Repository</h2>
+    <div class="card">
+      <h3><a href="https://github.com/tdaira/blerpc">tdaira/blerpc</a></h3>
+      <p>The main monorepo containing firmware, central clients, code generators, and tests.</p>
+      <table>
+        <thead><tr><th>Directory</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>peripheral_fw/</code></td><td>Zephyr peripheral firmware (C) &mdash; nRF54L15 &amp; EFR32xG22E</td></tr>
+          <tr><td><code>peripheral_py/</code></td><td>Python peripheral (bless) for role-reversal testing</td></tr>
+          <tr><td><code>central_py/</code></td><td>Python central client (bleak) + integration tests</td></tr>
+          <tr><td><code>central_fw/</code></td><td>Zephyr central firmware (C) for device-to-device communication</td></tr>
+          <tr><td><code>central_android/</code></td><td>Android central app (Kotlin) with test runner</td></tr>
+          <tr><td><code>central_ios/</code></td><td>iOS central app (Swift) with test runner</td></tr>
+          <tr><td><code>central_flutter/</code></td><td>Flutter central app (Dart) with test runner</td></tr>
+          <tr><td><code>central_rn/</code></td><td>React Native central app (TypeScript) with test runner</td></tr>
+          <tr><td><code>proto/</code></td><td>Protocol Buffers definitions (<code>blerpc.proto</code>)</td></tr>
+          <tr><td><code>tools/generate-handlers/</code></td><td>Code generator (Go) &mdash; generates handlers and clients for all languages</td></tr>
+          <tr><td><code>boards/</code></td><td>Custom board definitions (EFR32xG22E)</td></tr>
+          <tr><td><code>docs/</code></td><td>Additional documentation (firmware guide)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Protocol Libraries</h2>
+    <p>Platform-independent protocol encoding/decoding libraries, published as separate packages for each language.</p>
+
+    <div class="grid">
+      <div class="card">
+        <h3><a href="https://github.com/tdaira/blerpc-protocol">blerpc-protocol</a></h3>
+        <p><span class="badge badge-blue">Python</span> <span class="badge badge-blue">C</span></p>
+        <p>Container splitting/reassembly, command encoding/decoding, and E2E encryption (key exchange + AES-128-GCM). The Python package is installable via pip. The C implementation (<code>c/src/</code> + <code>c/include/</code>) is for embedded use.</p>
+        <pre><code class="language-bash">pip install git+https://github.com/tdaira/blerpc-protocol.git</code></pre>
+      </div>
+
+      <div class="card">
+        <h3><a href="https://github.com/tdaira/blerpc-protocol-swift">blerpc-protocol-swift</a></h3>
+        <p><span class="badge badge-blue">Swift</span></p>
+        <p>Swift Package for iOS and macOS. Uses Foundation and CryptoKit (Apple platform frameworks). Supports iOS 16+ and macOS 13+.</p>
+        <pre><code class="language-swift">// Swift Package Manager
+.package(url: "https://github.com/tdaira/blerpc-protocol-swift", from: "0.5.0")</code></pre>
+      </div>
+
+      <div class="card">
+        <h3><a href="https://github.com/tdaira/blerpc-protocol-kt">blerpc-protocol-kt</a></h3>
+        <p><span class="badge badge-blue">Kotlin</span></p>
+        <p>Kotlin library for Android. Published to GitHub Packages (Maven).</p>
+        <pre><code class="language-kotlin">implementation("com.blerpc:blerpc-protocol-kt:0.5.0")</code></pre>
+      </div>
+
+      <div class="card">
+        <h3><a href="https://github.com/tdaira/blerpc-protocol-dart">blerpc-protocol-dart</a></h3>
+        <p><span class="badge badge-blue">Dart</span></p>
+        <p>Pure Dart library for Flutter. Published to <a href="https://pub.dev/packages/blerpc_protocol">pub.dev</a>. Uses the <code>cryptography</code> package for encryption.</p>
+        <pre><code class="language-yaml">blerpc_protocol: ^0.6.0</code></pre>
+      </div>
+
+      <div class="card">
+        <h3><a href="https://github.com/tdaira/blerpc-protocol-rn">blerpc-protocol-rn</a></h3>
+        <p><span class="badge badge-blue">TypeScript</span></p>
+        <p>TypeScript library for React Native. Uses <code>@noble/ciphers</code>, <code>@noble/curves</code>, and <code>@noble/hashes</code> for encryption (pure JS, no native dependencies).</p>
+        <pre><code class="language-json">"@blerpc/protocol-rn": "file:../blerpc-protocol-rn"</code></pre>
+      </div>
+    </div>
+
+    <h2>Architecture Overview</h2>
+    <p>How the repositories relate to each other:</p>
+    <div class="diagram">
+<pre>
+                         bleRPC (monorepo)
+            +-----------------------------------------+
+            |                                         |
+            |  proto/blerpc.proto                     |
+            |       |                                 |
+            |       v                                 |
+            |  tools/generate-handlers (Go)           |
+            |       |                                 |
+            |       +---> peripheral_fw/src/             |
+            |       |     generated_handlers.{c,h}    |
+            |       |                                 |
+            |       +---> central_py/blerpc/generated/   |
+            |       |     generated_client.py         |
+            |       |                                 |
+            |       +---> central_android/.../         |
+            |       |     GeneratedClient.kt          |
+            |       |                                 |
+            |       +---> central_ios/.../             |
+            |       |     GeneratedClient.swift        |
+            |       |                                 |
+            |       +---> central_flutter/.../         |
+            |       |     generated_client.dart        |
+            |       |                                 |
+            |       +---> central_rn/.../              |
+            |       |     GeneratedClient.ts           |
+            |       |                                 |
+            |       +---> central_fw/src/              |
+            |             generated_client.{c,h}       |
+            |                                         |
+            +-----------------------------------------+
+                    |           |            |     |     |
+                    v           v            v     v     v
+           blerpc-protocol  blerpc-     blerpc- blerpc- blerpc-
+           (Python + C)     protocol-kt proto-  proto-  proto-
+                                        swift   dart    rn
+</pre>
+    </div>
+
+    <h2>CI / CD</h2>
+    <div class="card">
+      <p>Each repository has GitHub Actions CI that runs on every push and pull request:</p>
+      <table>
+        <thead><tr><th>Repository</th><th>CI Checks</th></tr></thead>
+        <tbody>
+          <tr><td>blerpc</td><td>Python tests + ruff lint, C lint (clang-format), Go lint + build, iOS build, Android build, Flutter build</td></tr>
+          <tr><td>blerpc-protocol</td><td>Python tests + lint, C lint + tests</td></tr>
+          <tr><td>blerpc-protocol-swift</td><td>swift build, swift test, SwiftLint</td></tr>
+          <tr><td>blerpc-protocol-kt</td><td>Gradle test, ktlint</td></tr>
+          <tr><td>blerpc-protocol-dart</td><td>dart analyze, dart test, auto-publish to pub.dev</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>License</h2>
+    <p>All bleRPC repositories are licensed under the <a href="https://www.gnu.org/licenses/lgpl-3.0.html">GNU Lesser General Public License v3.0 (LGPL-3.0)</a> with a static linking exception. You may statically link against bleRPC libraries without being required to provide relinkable object files. See the <code>LICENSING_EXCEPTION</code> file in each repository for details.</p>
+  </main>
+
+  <footer></footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

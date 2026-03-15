@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>性能基准 - bleRPC</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="alternate" hreflang="en" href="https://blerpc.net/benchmarks.html">
+  <link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/benchmarks.html">
+  <link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/benchmarks.html">
+  <link rel="alternate" hreflang="x-default" href="https://blerpc.net/benchmarks.html">
+</head>
+<body>
+  <header></header>
+
+  <main>
+    <h1>性能基准测试结果</h1>
+    <p>所有基准测试均在运行 bleRPC 固件并<strong>启用端到端加密</strong>（AES-128-GCM）的 <strong>nRF54L15 DK</strong> peripheral 上进行。MTU 协商为 247 字节。连接间隔因平台而异。</p>
+
+    <h2>吞吐量对比</h2>
+    <div class="grid">
+      <div class="card" style="text-align:center">
+        <p style="margin-bottom:0.3rem">Python (macOS)</p>
+        <div class="bench-value">30.3</div>
+        <div class="bench-unit">KB/s flash read</div>
+        <p style="margin-top:0.5rem"><span class="badge badge-blue">CI: 15ms</span></p>
+      </div>
+      <div class="card" style="text-align:center">
+        <p style="margin-bottom:0.3rem">iOS (iPhone 16)</p>
+        <div class="bench-value">32.1</div>
+        <div class="bench-unit">KB/s flash read</div>
+        <p style="margin-top:0.5rem"><span class="badge badge-blue">CI: 30ms</span></p>
+      </div>
+      <div class="card" style="text-align:center">
+        <p style="margin-bottom:0.3rem">Android (Pixel 5)</p>
+        <div class="bench-value">59.0</div>
+        <div class="bench-unit">KB/s flash read</div>
+        <p style="margin-top:0.5rem"><span class="badge badge-blue">CI: 30ms</span></p>
+      </div>
+    </div>
+
+    <h2>各平台详细结果</h2>
+
+    <h3>Python Central (macOS, bleak)</h3>
+    <p>连接间隔：15ms（macOS 协商）&mdash; <a href="https://github.com/tdaira/blerpc/blob/main/central_py/tests/test_integration.py">测试代码</a></p>
+    <table>
+      <thead><tr><th>基准测试</th><th>结果</th><th>详细信息</th></tr></thead>
+      <tbody>
+        <tr><td>flash_read_throughput</td><td><strong>30.3 KB/s</strong></td><td>10 次 8192 字节，264.2 ms/次</td></tr>
+        <tr><td>flash_read_overhead</td><td><strong>60.1 ms/次</strong></td><td>1 字节 x 20 次</td></tr>
+        <tr><td>echo_roundtrip</td><td><strong>60.6 ms/次</strong></td><td>50 次</td></tr>
+        <tr><td>data_write_throughput</td><td><strong>3.3 KB/s</strong></td><td>200 字节 x 20 次，59.9 ms/次</td></tr>
+        <tr><td>counter_stream (P&rarr;C)</td><td><strong>5.8 ms/条</strong></td><td>20 条，共 117 ms</td></tr>
+        <tr><td>counter_upload (C&rarr;P)</td><td><strong>7.4 ms/条</strong></td><td>20 条，共 147 ms</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>功能测试</th><th>结果</th><th>详细信息</th></tr></thead>
+      <tbody>
+        <tr><td>echo_basic</td><td><span class="badge badge-green">通过</span></td><td></td></tr>
+        <tr><td>echo_empty</td><td><span class="badge badge-green">通过</span></td><td></td></tr>
+        <tr><td>echo_max_length</td><td><span class="badge badge-green">通过</span></td><td>256 字符字符串</td></tr>
+        <tr><td>flash_read_basic</td><td><span class="badge badge-green">通过</span></td><td>16 字节</td></tr>
+        <tr><td>flash_read_8kb</td><td><span class="badge badge-green">通过</span></td><td>8192 字节</td></tr>
+        <tr><td>data_write_basic</td><td><span class="badge badge-green">通过</span></td><td>1024 字节</td></tr>
+        <tr><td>data_write_8kb</td><td><span class="badge badge-green">通过</span></td><td>8192 字节</td></tr>
+        <tr><td>multi_container_echo</td><td><span class="badge badge-green">通过</span></td><td>250 字符字符串</td></tr>
+        <tr><td>counter_stream</td><td><span class="badge badge-green">通过</span></td><td>5 条</td></tr>
+        <tr><td>counter_stream_large</td><td><span class="badge badge-green">通过</span></td><td>20 条</td></tr>
+        <tr><td>counter_upload</td><td><span class="badge badge-green">通过</span></td><td>5 条</td></tr>
+        <tr><td>counter_upload_large</td><td><span class="badge badge-green">通过</span></td><td>20 条</td></tr>
+      </tbody>
+    </table>
+
+    <h3>iOS Central (iPhone 16, CoreBluetooth)</h3>
+    <p>连接间隔：30ms（iOS 协商）&mdash; <a href="https://github.com/tdaira/blerpc/blob/main/central_ios/BlerpcCentral/Test/TestRunner.swift">测试代码</a></p>
+    <table>
+      <thead><tr><th>基准测试</th><th>结果</th><th>详细信息</th></tr></thead>
+      <tbody>
+        <tr><td>flash_read_throughput</td><td><strong>32.1 KB/s</strong></td><td>10 次 8192 字节，249.0 ms/次</td></tr>
+        <tr><td>flash_read_overhead</td><td><strong>62.3 ms/次</strong></td><td>1 字节 x 20 次</td></tr>
+        <tr><td>echo_roundtrip</td><td><strong>60.0 ms/次</strong></td><td>50 次</td></tr>
+        <tr><td>data_write_throughput</td><td><strong>3.3 KB/s</strong></td><td>200 字节 x 20 次，60.0 ms/次</td></tr>
+        <tr><td>counter_stream (P&rarr;C)</td><td><strong>6.1 ms/条</strong></td><td>20 条，共 121 ms</td></tr>
+        <tr><td>counter_upload (C&rarr;P)</td><td><strong>4.5 ms/条</strong></td><td>20 条，共 91 ms</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>功能测试</th><th>结果</th><th>详细信息</th></tr></thead>
+      <tbody>
+        <tr><td>echo_basic</td><td><span class="badge badge-green">通过</span></td><td></td></tr>
+        <tr><td>echo_empty</td><td><span class="badge badge-green">通过</span></td><td></td></tr>
+        <tr><td>flash_read_basic</td><td><span class="badge badge-green">通过</span></td><td>64 字节</td></tr>
+        <tr><td>flash_read_8kb</td><td><span class="badge badge-green">通过</span></td><td>8192 字节</td></tr>
+        <tr><td>data_write</td><td><span class="badge badge-green">通过</span></td><td>64 字节</td></tr>
+        <tr><td>counter_stream</td><td><span class="badge badge-green">通过</span></td><td>5 条</td></tr>
+        <tr><td>counter_upload</td><td><span class="badge badge-green">通过</span></td><td>5 条</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Android Central (Pixel 5)</h3>
+    <p>连接间隔：30ms（Android 协商）&mdash; <a href="https://github.com/tdaira/blerpc/blob/main/central_android/app/src/main/java/com/blerpc/android/test/TestRunner.kt">测试代码</a></p>
+    <table>
+      <thead><tr><th>基准测试</th><th>结果</th><th>详细信息</th></tr></thead>
+      <tbody>
+        <tr><td>flash_read_throughput</td><td><strong>59.0 KB/s</strong></td><td>10 次 8192 字节，135.7 ms/次</td></tr>
+        <tr><td>flash_read_overhead</td><td><strong>90.4 ms/次</strong></td><td>1 字节 x 20 次</td></tr>
+        <tr><td>echo_roundtrip</td><td><strong>62.2 ms/次</strong></td><td>50 次</td></tr>
+        <tr><td>data_write_throughput</td><td><strong>3.2 KB/s</strong></td><td>200 字节 x 20 次，60.3 ms/次</td></tr>
+        <tr><td>counter_stream (P&rarr;C)</td><td><strong>3.7 ms/条</strong></td><td>20 条，共 73 ms</td></tr>
+        <tr><td>counter_upload (C&rarr;P)</td><td><strong>5.1 ms/条</strong></td><td>20 条，共 101 ms</td></tr>
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th>功能测试</th><th>结果</th><th>详细信息</th></tr></thead>
+      <tbody>
+        <tr><td>echo_basic</td><td><span class="badge badge-green">通过</span></td><td></td></tr>
+        <tr><td>echo_empty</td><td><span class="badge badge-green">通过</span></td><td></td></tr>
+        <tr><td>flash_read_basic</td><td><span class="badge badge-green">通过</span></td><td>64 字节</td></tr>
+        <tr><td>flash_read_8kb</td><td><span class="badge badge-green">通过</span></td><td>8192 字节</td></tr>
+        <tr><td>data_write</td><td><span class="badge badge-green">通过</span></td><td>64 字节</td></tr>
+        <tr><td>counter_stream</td><td><span class="badge badge-green">通过</span></td><td>5 条</td></tr>
+        <tr><td>counter_upload</td><td><span class="badge badge-green">通过</span></td><td>5 条</td></tr>
+      </tbody>
+    </table>
+
+    <h2>性能说明</h2>
+    <div class="card">
+      <h3>连接间隔的影响</h3>
+      <p>连接间隔（CI）是影响往返延迟的主要因素。每次请求&ndash;响应循环至少需要 2 个连接事件：</p>
+      <ul>
+        <li><strong>macOS (bleak)</strong>：CI = 15ms &rarr; 约 30ms 往返</li>
+        <li><strong>iOS (iPhone 16)</strong>：CI = 30ms &rarr; 约 60ms 往返</li>
+        <li><strong>Android (Pixel 5)</strong>：CI = 30ms &rarr; 约 60ms 往返，但由于每个连接事件发送更多数据包，吞吐量最高</li>
+      </ul>
+      <p>Peripheral 广播的首选 CI 为 15&ndash;30ms（<code>PREF_MIN_INT=12, PREF_MAX_INT=24</code>）。实际 CI 由 Central 的操作系统决定。</p>
+    </div>
+    <div class="card">
+      <h3>加密开销</h3>
+      <p>端到端加密每次传输增加 <strong>20 字节</strong>（4 字节计数器 + 16 字节 AES-GCM 标签）。对于大载荷（8 KB），此开销可以忽略不计（&lt;0.3%）。AES-128-GCM 加密/解密本身在现代移动设备上是硬件加速的，即使对于 8 KB 载荷也只需 &lt;1ms</p>
+    </div>
+    <div class="card">
+      <h3>吞吐量优化</h3>
+      <ul>
+        <li><strong>nanopb FT_CALLBACK</strong>：将 flash 数据直接流式传入 protobuf 编码，节省 4KB 静态 RAM</li>
+        <li><strong>零拷贝响应</strong>：Protobuf 响应直接在容器头偏移处编码</li>
+        <li><strong>无包间延迟</strong>：容器背靠背发送</li>
+        <li><strong>每次 flash read 最大 8KB</strong>：延迟和吞吐量之间的最佳平衡</li>
+      </ul>
+    </div>
+  </main>
+
+  <footer></footer>
+
+  <script src="../script.js"></script>
+</body>
+</html>

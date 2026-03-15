@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>暗号化 - bleRPC</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="alternate" hreflang="en" href="https://blerpc.net/encryption.html">
+  <link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/encryption.html">
+  <link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/encryption.html">
+  <link rel="alternate" hreflang="x-default" href="https://blerpc.net/encryption.html">
+</head>
+<body>
+  <header></header>
+
+  <main>
+    <h1>エンドツーエンド暗号化</h1>
+    <p>bleRPCは、4ステップの鍵交換ハンドシェイクとAES-128-GCMセッション暗号化によるオプションのエンドツーエンド暗号化をサポートしています。暗号化は接続セットアップ時にネゴシエーションされ、アプリケーション層に対して透過的です。</p>
+
+    <h2>概要</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>コンポーネント</th><th>アルゴリズム</th></tr></thead>
+        <tbody>
+          <tr><td>鍵合意</td><td>X25519 ECDH</td></tr>
+          <tr><td>認証</td><td>Ed25519署名</td></tr>
+          <tr><td>鍵導出</td><td>HKDF-SHA256</td></tr>
+          <tr><td>セッション暗号化</td><td>AES-128-GCM</td></tr>
+          <tr><td>リプレイ防止</td><td>単調増加カウンター</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>ケイパビリティネゴシエーション</h2>
+    <p>暗号化は、ペリフェラルの<a href="protocol.html">CAPABILITIES</a>レスポンスでアドバタイズされます。6バイトのペイロードには<code>flags</code>フィールドが含まれます：</p>
+    <div class="packet-format-wrapper">
+      <div class="packet-format">
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">max_request</div><div class="packet-field-size">16 bits (LE)</div></div>
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">max_response</div><div class="packet-field-size">16 bits (LE)</div></div>
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">flags</div><div class="packet-field-size">16 bits (LE)</div></div>
+      </div>
+    </div>
+    <p><code>flags &amp; 0x01</code>がセットされている場合、ペリフェラルは暗号化をサポートしており、セントラルは鍵交換ハンドシェイクを開始する必要があります。</p>
+
+    <h2>鍵交換ハンドシェイク</h2>
+    <p>ハンドシェイクは4つのステップを使用し、各ステップはKEY_EXCHANGE制御コンテナ（<code>control_cmd=0x6</code>）で運ばれます。各ペイロードには1バイトのステップ識別子がプレフィックスとして付きます。</p>
+
+    <div class="diagram">
+      <pre class="mermaid">
+sequenceDiagram
+    participant C as Central
+    participant P as Peripheral
+    Note over C: Generate ephemeral X25519 keypair
+    C->>P: Step 1: [step:1] + central_x25519_pubkey (33 bytes)
+    Note over P: Generate ephemeral X25519 keypair
+    Note over P: Compute shared_secret = X25519(priv, central_pub)
+    Note over P: Derive session_key = HKDF(shared_secret)
+    Note over P: Sign(ed25519_privkey, central_pub || peripheral_pub)
+    P->>C: Step 2: [step:1] + x25519_pub + signature + ed25519_pub (129 bytes)
+    Note over C: Compute shared_secret = X25519(priv, peripheral_pub)
+    Note over C: Derive session_key = HKDF(shared_secret)
+    Note over C: Verify signature (TOFU for first connection)
+    Note over C: Generate confirmation = encrypt(random, session_key)
+    C->>P: Step 3: [step:1] + encrypted_confirmation (45 bytes)
+    Note over P: Decrypt confirmation to verify session_key match
+    Note over P: Generate confirmation = encrypt(random, session_key)
+    P->>C: Step 4: [step:1] + encrypted_confirmation (45 bytes)
+    Note over C: Decrypt confirmation to verify session_key match
+    Note over C,P: Session key established - all subsequent data is encrypted
+      </pre>
+    </div>
+
+    <h3>ステップ1: Central &rarr; Peripheral (33バイト)</h3>
+    <div class="card">
+      <p>セントラルがエフェメラルなX25519鍵ペアを生成し、公開鍵を送信</p>
+      <div class="packet-format-wrapper">
+        <div class="packet-format">
+          <div class="packet-field" style="flex:1"><div class="packet-field-name">step</div><div class="packet-field-size">1 byte</div></div>
+          <div class="packet-field" style="flex:8"><div class="packet-field-name">central_x25519_pubkey</div><div class="packet-field-size">32 bytes</div></div>
+        </div>
+      </div>
+    </div>
+
+    <h3>ステップ2: Peripheral &rarr; Central (129バイト)</h3>
+    <div class="card">
+      <p>ペリフェラルが独自のエフェメラルなX25519鍵ペアを生成し、共有シークレットを計算し、セッション鍵を導出し、長期Ed25519鍵で両方の公開鍵に署名</p>
+      <div class="packet-format-wrapper">
+        <div class="packet-format">
+          <div class="packet-field" style="flex:1"><div class="packet-field-name">step</div><div class="packet-field-size">1 byte</div></div>
+          <div class="packet-field" style="flex:8"><div class="packet-field-name">peripheral_x25519_pubkey</div><div class="packet-field-size">32 bytes</div></div>
+          <div class="packet-field" style="flex:16"><div class="packet-field-name">ed25519_signature</div><div class="packet-field-size">64 bytes</div></div>
+          <div class="packet-field" style="flex:8"><div class="packet-field-name">ed25519_pubkey</div><div class="packet-field-size">32 bytes</div></div>
+        </div>
+      </div>
+      <p>署名は<code>central_x25519_pubkey || peripheral_x25519_pubkey</code>（64バイト）を対象とし、中間者攻撃を防ぐために両者のエフェメラル鍵をバインド</p>
+    </div>
+
+    <h3>ステップ3: Central &rarr; Peripheral (45バイト)</h3>
+    <div class="card">
+      <p>セントラルが署名を検証し、共有シークレットとセッション鍵を計算した後、正しいセッション鍵を保持していることを証明するために暗号化された確認を送信</p>
+      <div class="packet-format-wrapper">
+        <div class="packet-format">
+          <div class="packet-field" style="flex:1"><div class="packet-field-name">step</div><div class="packet-field-size">1 byte</div></div>
+          <div class="packet-field" style="flex:4"><div class="packet-field-name">nonce</div><div class="packet-field-size">12 bytes</div></div>
+          <div class="packet-field" style="flex:4"><div class="packet-field-name">ciphertext</div><div class="packet-field-size">16 bytes</div></div>
+          <div class="packet-field" style="flex:4"><div class="packet-field-name">tag</div><div class="packet-field-size">16 bytes</div></div>
+        </div>
+      </div>
+      <p>平文は16バイトのランダムデータで、導出されたセッション鍵とランダムな12バイトのnonceを使用してAES-128-GCMで暗号化</p>
+    </div>
+
+    <h3>ステップ4: Peripheral &rarr; Central (45バイト)</h3>
+    <div class="card">
+      <p>ペリフェラルがステップ3を復号してセッション鍵を検証し、独自の暗号化された確認を送信</p>
+      <div class="packet-format-wrapper">
+        <div class="packet-format">
+          <div class="packet-field" style="flex:1"><div class="packet-field-name">step</div><div class="packet-field-size">1 byte</div></div>
+          <div class="packet-field" style="flex:4"><div class="packet-field-name">nonce</div><div class="packet-field-size">12 bytes</div></div>
+          <div class="packet-field" style="flex:4"><div class="packet-field-name">ciphertext</div><div class="packet-field-size">16 bytes</div></div>
+          <div class="packet-field" style="flex:4"><div class="packet-field-name">tag</div><div class="packet-field-size">16 bytes</div></div>
+        </div>
+      </div>
+      <p>セントラルがステップ4の復号に成功すると、ハンドシェイクが完了し、両者が同じセッション鍵を共有</p>
+    </div>
+
+    <h2>鍵導出</h2>
+    <div class="card">
+      <p>セッション鍵はX25519共有シークレットからHKDF-SHA256を使用して導出されます：</p>
+      <pre><code>shared_secret = X25519(my_privkey, peer_pubkey)        # 32 bytes
+session_key   = HKDF-SHA256(
+    salt = central_x25519_pubkey || peripheral_x25519_pubkey,  # 64 bytes
+    ikm  = shared_secret,
+    info = b"blerpc-session-key",
+    len  = 16                                           # AES-128 key
+)</code></pre>
+      <p>セントラルとペリフェラルの両方が、両者のX25519公開鍵の連結をソルトとして使用して同じ導出を行い、同一の16バイトセッション鍵に到達</p>
+    </div>
+
+    <h2>セッション暗号化</h2>
+    <p>ハンドシェイク後、すべてのコマンドペイロードはコンテナ分割前に暗号化されます：</p>
+
+    <h3>暗号化ペイロードフォーマット</h3>
+    <div class="packet-format-wrapper">
+      <div class="packet-format">
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">counter</div><div class="packet-field-size">32 bits (LE)</div></div>
+        <div class="packet-field packet-field-var" style="flex:10"><div class="packet-field-name">ciphertext</div><div class="packet-field-size">variable</div></div>
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">tag</div><div class="packet-field-size">128 bits</div></div>
+      </div>
+    </div>
+
+    <h3>暗号化プロセス</h3>
+    <div class="card">
+      <ol>
+        <li><a href="protocol.html">CommandPacket</a>をシリアライズ（タイプ + 名前 + protobufデータ）</li>
+        <li>TXカウンターをインクリメント</li>
+        <li>12バイトのnonceを構築: <code>[counter_LE:4][direction:1][0x00:7]</code> &mdash; <code>direction</code>はCentral&rarr;Peripheralの場合<code>0</code>、Peripheral&rarr;Centralの場合<code>1</code></li>
+        <li>AES-128-GCMで暗号化: <code>ciphertext, tag = AES-GCM(session_key, nonce, plaintext)</code></li>
+        <li>カウンターをプレフィックス: <code>[counter:4][ciphertext:N][tag:16]</code></li>
+        <li>通常通りコンテナに分割</li>
+      </ol>
+    </div>
+
+    <h3>復号プロセス</h3>
+    <div class="card">
+      <ol>
+        <li>コンテナを完全なペイロードに再組み立て</li>
+        <li>カウンター（先頭4バイト）、暗号文、タグ（末尾16バイト）を抽出</li>
+        <li>カウンターが最後に受信したカウンターより大きいことを検証（リプレイ検出）</li>
+        <li>nonceを構築しAES-128-GCMで復号</li>
+        <li>復号されたデータをCommandPacketとしてパース</li>
+      </ol>
+    </div>
+
+    <h2>リプレイ検出</h2>
+    <div class="card">
+      <p>各方向は独立した単調増加カウンターを維持します：</p>
+      <ul>
+        <li><strong>TXカウンター</strong>: 暗号化の前にインクリメント。0から開始</li>
+        <li><strong>RXカウンター</strong>: 最後に受信したカウンターを追跡。最後に受信したカウンター以下のカウンターを持つメッセージは拒否されます</li>
+      </ul>
+      <p>これにより、攻撃者が過去にキャプチャした暗号化パケットを再送信するリプレイ攻撃を防止</p>
+    </div>
+
+    <h2>信頼モデル</h2>
+    <div class="card">
+      <h3>Trust On First Use (TOFU)</h3>
+      <p>最初の接続時、セントラルはペリフェラルのEd25519公開鍵を受け入れて保存します。以降の接続では、セントラルはペリフェラルが同じ鍵を提示するかを検証します。鍵が変更された場合、接続は拒否される（またはユーザーに確認を求める）</p>
+      <p>これはSSHの<code>known_hosts</code>メカニズムに類似しています。PKIや認証局を必要とせずに、最初の接続後の中間者攻撃に対する保護を提供</p>
+    </div>
+
+    <h2>プラットフォーム実装</h2>
+    <table>
+      <thead><tr><th>プラットフォーム</th><th>暗号ライブラリ</th><th>鍵交換</th><th>セッション暗号化</th></tr></thead>
+      <tbody>
+        <tr><td>Python</td><td><code>cryptography</code></td><td><code>CentralKeyExchange</code> / <code>PeripheralKeyExchange</code></td><td><code>BlerpcCryptoSession</code></td></tr>
+        <tr><td>Kotlin (Android)</td><td>Java Crypto</td><td><code>CentralKeyExchange</code></td><td><code>BlerpcCryptoSession</code></td></tr>
+        <tr><td>Swift (iOS)</td><td>CryptoKit</td><td><code>CentralKeyExchange</code></td><td><code>BlerpcCryptoSession</code></td></tr>
+        <tr><td>Dart (Flutter)</td><td><code>cryptography</code></td><td><code>CentralKeyExchange</code></td><td><code>BlerpcCryptoSession</code></td></tr>
+        <tr><td>C (Zephyr)</td><td>PSA Crypto (mbedTLS)</td><td><code>blerpc_central_kx_*</code> / <code>blerpc_peripheral_kx_*</code></td><td><code>blerpc_crypto_session</code></td></tr>
+      </tbody>
+    </table>
+
+    <h2>設定</h2>
+    <div class="card">
+      <h3>暗号化の有効化</h3>
+      <p>暗号化はペリフェラル側で有効にします。有効にすると、ペリフェラルはケイパビリティで暗号化サポートをアドバタイズし、セントラルが鍵交換を開始することを期待</p>
+      <h3>Zephyrファームウェア</h3>
+      <pre><code># prj.conf
+CONFIG_BLERPC_ENCRYPTION=y</code></pre>
+      <h3>Python Peripheral</h3>
+      <pre><code class="language-python"># server.py - Ed25519署名鍵が提供されると暗号化が有効になります。
+# X25519鍵ペアは接続ごとにエフェメラルに生成されます。
+peripheral = BlerpcPeripheral(
+    ed25519_private_key_hex="...",
+)</code></pre>
+    </div>
+  </main>
+
+  <footer></footer>
+
+  <script src="../script.js"></script>
+</body>
+</html>

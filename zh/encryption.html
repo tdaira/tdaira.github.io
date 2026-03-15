@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>加密 - bleRPC</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="alternate" hreflang="en" href="https://blerpc.net/encryption.html">
+  <link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/encryption.html">
+  <link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/encryption.html">
+  <link rel="alternate" hreflang="x-default" href="https://blerpc.net/encryption.html">
+</head>
+<body>
+  <header></header>
+
+  <main>
+    <h1>端到端加密</h1>
+    <p>bleRPC 支持可选的端到端加密，使用 4 步密钥交换握手和 AES-128-GCM 会话加密。加密在连接建立期间协商，对应用层透明。</p>
+
+    <h2>概述</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>组件</th><th>算法</th></tr></thead>
+        <tbody>
+          <tr><td>密钥协商</td><td>X25519 ECDH</td></tr>
+          <tr><td>认证</td><td>Ed25519 Signatures</td></tr>
+          <tr><td>密钥派生</td><td>HKDF-SHA256</td></tr>
+          <tr><td>会话加密</td><td>AES-128-GCM</td></tr>
+          <tr><td>重放保护</td><td>单调递增计数器</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>能力协商</h2>
+    <p>加密由 peripheral 在 <a href="protocol.html">CAPABILITIES</a> 响应中广播。6 字节载荷包含 <code>flags</code> 字段：</p>
+    <div class="packet-format-wrapper">
+      <div class="packet-format">
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">max_request</div><div class="packet-field-size">16 bits (LE)</div></div>
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">max_response</div><div class="packet-field-size">16 bits (LE)</div></div>
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">flags</div><div class="packet-field-size">16 bits (LE)</div></div>
+      </div>
+    </div>
+    <p>如果 <code>flags &amp; 0x01</code> 被设置，peripheral 支持加密，central 应发起密钥交换握手。</p>
+
+    <h2>密钥交换握手</h2>
+    <p>握手使用 4 个步骤，每个步骤都在 KEY_EXCHANGE 控制容器（<code>control_cmd=0x6</code>）中传输。每个载荷以 1 字节步骤标识符为前缀。</p>
+
+    <div class="diagram">
+      <pre class="mermaid">
+sequenceDiagram
+    participant C as Central
+    participant P as Peripheral
+    Note over C: Generate ephemeral X25519 keypair
+    C->>P: Step 1: [step:1] + central_x25519_pubkey (33 bytes)
+    Note over P: Generate ephemeral X25519 keypair
+    Note over P: Compute shared_secret = X25519(priv, central_pub)
+    Note over P: Derive session_key = HKDF(shared_secret)
+    Note over P: Sign(ed25519_privkey, central_pub || peripheral_pub)
+    P->>C: Step 2: [step:1] + x25519_pub + signature + ed25519_pub (129 bytes)
+    Note over C: Compute shared_secret = X25519(priv, peripheral_pub)
+    Note over C: Derive session_key = HKDF(shared_secret)
+    Note over C: Verify signature (TOFU for first connection)
+    Note over C: Generate confirmation = encrypt(random, session_key)
+    C->>P: Step 3: [step:1] + encrypted_confirmation (45 bytes)
+    Note over P: Decrypt confirmation to verify session_key match
+    Note over P: Generate confirmation = encrypt(random, session_key)
+    P->>C: Step 4: [step:1] + encrypted_confirmation (45 bytes)
+    Note over C: Decrypt confirmation to verify session_key match
+    Note over C,P: Session key established - all subsequent data is encrypted
+      </pre>
+    </div>
+
+    <h3>步骤 1：Central &rarr; Peripheral（33 字节）</h3>
+    <div class="card">
+      <p>Central 生成临时 X25519 密钥对并发送其公钥</p>
+      <div class="packet-format-wrapper">
+        <div class="packet-format">
+          <div class="packet-field" style="flex:1"><div class="packet-field-name">step</div><div class="packet-field-size">1 byte</div></div>
+          <div class="packet-field" style="flex:8"><div class="packet-field-name">central_x25519_pubkey</div><div class="packet-field-size">32 bytes</div></div>
+        </div>
+      </div>
+    </div>
+
+    <h3>步骤 2：Peripheral &rarr; Central（129 字节）</h3>
+    <div class="card">
+      <p>Peripheral 生成自己的临时 X25519 密钥对，计算共享密钥，派生会话密钥，并使用其长期 Ed25519 密钥签名两个公钥</p>
+      <div class="packet-format-wrapper">
+        <div class="packet-format">
+          <div class="packet-field" style="flex:1"><div class="packet-field-name">step</div><div class="packet-field-size">1 byte</div></div>
+          <div class="packet-field" style="flex:8"><div class="packet-field-name">peripheral_x25519_pubkey</div><div class="packet-field-size">32 bytes</div></div>
+          <div class="packet-field" style="flex:16"><div class="packet-field-name">ed25519_signature</div><div class="packet-field-size">64 bytes</div></div>
+          <div class="packet-field" style="flex:8"><div class="packet-field-name">ed25519_pubkey</div><div class="packet-field-size">32 bytes</div></div>
+        </div>
+      </div>
+      <p>签名覆盖 <code>central_x25519_pubkey || peripheral_x25519_pubkey</code>（64 字节），将双方的临时密钥绑定在一起以防止中间人攻击</p>
+    </div>
+
+    <h3>步骤 3：Central &rarr; Peripheral（45 字节）</h3>
+    <div class="card">
+      <p>Central 验证签名，计算共享密钥和会话密钥，然后发送加密确认以证明它持有正确的会话密钥</p>
+      <div class="packet-format-wrapper">
+        <div class="packet-format">
+          <div class="packet-field" style="flex:1"><div class="packet-field-name">step</div><div class="packet-field-size">1 byte</div></div>
+          <div class="packet-field" style="flex:4"><div class="packet-field-name">nonce</div><div class="packet-field-size">12 bytes</div></div>
+          <div class="packet-field" style="flex:4"><div class="packet-field-name">ciphertext</div><div class="packet-field-size">16 bytes</div></div>
+          <div class="packet-field" style="flex:4"><div class="packet-field-name">tag</div><div class="packet-field-size">16 bytes</div></div>
+        </div>
+      </div>
+      <p>明文是 16 字节随机数据，使用派生的会话密钥和随机 12 字节 nonce 通过 AES-128-GCM 加密</p>
+    </div>
+
+    <h3>步骤 4：Peripheral &rarr; Central（45 字节）</h3>
+    <div class="card">
+      <p>Peripheral 解密步骤 3 以验证会话密钥，然后发送自己的加密确认</p>
+      <div class="packet-format-wrapper">
+        <div class="packet-format">
+          <div class="packet-field" style="flex:1"><div class="packet-field-name">step</div><div class="packet-field-size">1 byte</div></div>
+          <div class="packet-field" style="flex:4"><div class="packet-field-name">nonce</div><div class="packet-field-size">12 bytes</div></div>
+          <div class="packet-field" style="flex:4"><div class="packet-field-name">ciphertext</div><div class="packet-field-size">16 bytes</div></div>
+          <div class="packet-field" style="flex:4"><div class="packet-field-name">tag</div><div class="packet-field-size">16 bytes</div></div>
+        </div>
+      </div>
+      <p>Central 成功解密步骤 4 后，握手完成，双方共享相同的会话密钥</p>
+    </div>
+
+    <h2>密钥派生</h2>
+    <div class="card">
+      <p>会话密钥从 X25519 共享密钥通过 HKDF-SHA256 派生：</p>
+      <pre><code>shared_secret = X25519(my_privkey, peer_pubkey)        # 32 bytes
+session_key   = HKDF-SHA256(
+    salt = central_x25519_pubkey || peripheral_x25519_pubkey,  # 64 bytes
+    ikm  = shared_secret,
+    info = b"blerpc-session-key",
+    len  = 16                                           # AES-128 key
+)</code></pre>
+      <p>Central 和 peripheral 都使用两个 X25519 公钥的拼接作为 salt 执行相同的派生，从而得到相同的 16 字节会话密钥</p>
+    </div>
+
+    <h2>会话加密</h2>
+    <p>握手完成后，所有命令载荷在容器分割之前进行加密：</p>
+
+    <h3>加密载荷格式</h3>
+    <div class="packet-format-wrapper">
+      <div class="packet-format">
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">counter</div><div class="packet-field-size">32 bits (LE)</div></div>
+        <div class="packet-field packet-field-var" style="flex:10"><div class="packet-field-name">ciphertext</div><div class="packet-field-size">variable</div></div>
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">tag</div><div class="packet-field-size">128 bits</div></div>
+      </div>
+    </div>
+
+    <h3>加密过程</h3>
+    <div class="card">
+      <ol>
+        <li>序列化 <a href="protocol.html">CommandPacket</a>（类型 + 名称 + protobuf 数据）</li>
+        <li>递增 TX 计数器</li>
+        <li>构造 12 字节 nonce：<code>[counter_LE:4][direction:1][0x00:7]</code> &mdash; <code>direction</code> 为 Central&rarr;Peripheral 时是 <code>0</code>，Peripheral&rarr;Central 时是 <code>1</code></li>
+        <li>使用 AES-128-GCM 加密：<code>ciphertext, tag = AES-GCM(session_key, nonce, plaintext)</code></li>
+        <li>前缀添加计数器：<code>[counter:4][ciphertext:N][tag:16]</code></li>
+        <li>按常规方式分割到容器中</li>
+      </ol>
+    </div>
+
+    <h3>解密过程</h3>
+    <div class="card">
+      <ol>
+        <li>将容器重新组装为完整载荷</li>
+        <li>提取计数器（前 4 字节）、密文和标签（最后 16 字节）</li>
+        <li>验证计数器 &gt; 上次接收的计数器（重放检测）</li>
+        <li>构造 nonce 并使用 AES-128-GCM 解密</li>
+        <li>将解密的数据解析为 CommandPacket</li>
+      </ol>
+    </div>
+
+    <h2>重放检测</h2>
+    <div class="card">
+      <p>每个方向维护一个独立的单调递增计数器：</p>
+      <ul>
+        <li><strong>TX 计数器</strong>：每次加密前递增。从 0 开始</li>
+        <li><strong>RX 计数器</strong>：跟踪上次接收的计数器。任何计数器 &le; 上次接收计数器的消息将被拒绝</li>
+      </ul>
+      <p>这可以防止重放攻击，即攻击者重新发送之前捕获的加密数据包</p>
+    </div>
+
+    <h2>信任模型</h2>
+    <div class="card">
+      <h3>首次使用信任 (TOFU)</h3>
+      <p>首次连接时，central 接受 peripheral 的 Ed25519 公钥并存储。在后续连接中，central 验证 peripheral 提供的是相同的密钥。如果密钥发生变化，连接将被拒绝（或提示用户）</p>
+      <p>这类似于 SSH 的 <code>known_hosts</code> 机制。它在首次连接后提供中间人攻击保护，无需 PKI 或证书颁发机构</p>
+    </div>
+
+    <h2>平台实现</h2>
+    <table>
+      <thead><tr><th>平台</th><th>加密库</th><th>密钥交换</th><th>会话加密</th></tr></thead>
+      <tbody>
+        <tr><td>Python</td><td><code>cryptography</code></td><td><code>CentralKeyExchange</code> / <code>PeripheralKeyExchange</code></td><td><code>BlerpcCryptoSession</code></td></tr>
+        <tr><td>Kotlin (Android)</td><td>Java Crypto</td><td><code>CentralKeyExchange</code></td><td><code>BlerpcCryptoSession</code></td></tr>
+        <tr><td>Swift (iOS)</td><td>CryptoKit</td><td><code>CentralKeyExchange</code></td><td><code>BlerpcCryptoSession</code></td></tr>
+        <tr><td>Dart (Flutter)</td><td><code>cryptography</code></td><td><code>CentralKeyExchange</code></td><td><code>BlerpcCryptoSession</code></td></tr>
+        <tr><td>C (Zephyr)</td><td>PSA Crypto (mbedTLS)</td><td><code>blerpc_central_kx_*</code> / <code>blerpc_peripheral_kx_*</code></td><td><code>blerpc_crypto_session</code></td></tr>
+      </tbody>
+    </table>
+
+    <h2>配置</h2>
+    <div class="card">
+      <h3>启用加密</h3>
+      <p>加密在 peripheral 端启用。启用后，peripheral 在其能力中广播加密支持，并期望 central 发起密钥交换</p>
+      <h3>Zephyr 固件</h3>
+      <pre><code># prj.conf
+CONFIG_BLERPC_ENCRYPTION=y</code></pre>
+      <h3>Python Peripheral</h3>
+      <pre><code class="language-python"># server.py - encryption is enabled when an Ed25519 signing key is provided.
+# X25519 keypairs are generated ephemerally for each connection.
+peripheral = BlerpcPeripheral(
+    ed25519_private_key_hex="...",
+)</code></pre>
+    </div>
+  </main>
+
+  <footer></footer>
+
+  <script src="../script.js"></script>
+</body>
+</html>

@@ -1,0 +1,1168 @@
+# bleRPC - Full Documentation
+
+> Type-safe, high-performance, secure RPC over Bluetooth Low Energy.
+
+bleRPC is an RPC framework that enables type-safe communication over Bluetooth Low Energy (BLE) using Protocol Buffers. It provides a layered protocol stack on top of BLE GATT with optional end-to-end encryption. Define your API in `.proto` files and generate type-safe client/server code for multiple platforms.
+
+---
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Getting Started](#getting-started)
+3. [Benchmarks](#benchmarks)
+4. [Protocol Specification](#protocol-specification)
+5. [Encryption](#encryption)
+6. [Repositories](#repositories)
+
+---
+
+## Overview
+
+### Key Features
+
+- **Protocol Buffers**: Define your BLE communication with `.proto` files. Get type-safe, language-agnostic serialization with zero ambiguity.
+- **High Performance**: Achieves near-maximum BLE throughput (~30 KB/s) with MTU-aware fragmentation and zero-copy optimizations.
+- **End-to-End Encryption**: Optional E2E encryption with X25519 key exchange, Ed25519 signatures, and AES-128-GCM session encryption.
+
+### How It Works
+
+bleRPC provides a layered protocol stack on top of BLE GATT:
+
+1. **Command Layer** -- Wraps Protocol Buffers payloads with command metadata (name, type, data length).
+2. **Encryption Layer** (optional) -- Encrypts the serialized command with AES-128-GCM after a 4-step key exchange.
+3. **Container Layer** -- Fragments payloads into MTU-sized containers for BLE transmission, with reassembly on the receiving side.
+
+All communication uses a single GATT Characteristic: the Central writes requests via Write Without Response and receives responses via Notify.
+
+### Communication Flow
+
+```
+Central (iOS / Android / Flutter / RN / Python)     Peripheral (Zephyr / Python)
+    |                                                      |
+    |  Protobuf encode + Command wrap                      |
+    |  Encrypt (if enabled)                                |
+    |  Split into MTU containers                           |
+    | ------ Write Without Response (containers) --------> |
+    |                                Reassemble containers  |
+    |                                Decrypt (if enabled)   |
+    |                                Decode command + Proto  |
+    |                                Execute handler        |
+    |                                Encode resp + Encrypt + Split
+    | <----------- Notify (containers) ------------------- |
+    |  Reassemble + Decrypt + Decode                       |
+```
+
+### Supported Platforms
+
+#### Central (Client)
+
+| Platform        | Language                  | BLE Stack              | Status |
+|-----------------|---------------------------|------------------------|--------|
+| iOS             | Swift                     | CoreBluetooth          | Stable |
+| Android         | Kotlin                    | Android BLE            | Stable |
+| iOS / Android   | Dart (Flutter)            | flutter_blue_plus      | Stable |
+| iOS / Android   | TypeScript (React Native) | react-native-ble-plx   | Stable |
+| macOS / Linux   | Python                    | bleak                  | Stable |
+| Zephyr (nRF54L15) | C                      | Zephyr BLE             | Stable |
+
+#### Peripheral (Server)
+
+| Platform              | Language | BLE Stack             | Status |
+|-----------------------|----------|-----------------------|--------|
+| Zephyr (nRF54L15)    | C        | Zephyr BLE            | Stable |
+| Zephyr (EFR32xG22E)  | C        | Zephyr BLE + SiLabs HCI | Stable |
+| macOS                 | Python   | bless                 | Stable |
+
+#### Protocol Libraries
+
+| Language   | Package                | Dependencies                                      |
+|------------|------------------------|---------------------------------------------------|
+| Swift      | blerpc-protocol-swift  | Foundation + CryptoKit                            |
+| Kotlin     | blerpc-protocol-kt    | Protobuf JavaLite                                 |
+| Dart       | blerpc-protocol-dart   | cryptography                                      |
+| Python     | blerpc-protocol        | cryptography                                      |
+| TypeScript | blerpc-protocol-rn     | @noble/ciphers + @noble/curves + @noble/hashes   |
+| C          | blerpc-protocol/c      | None (PSA Crypto on Zephyr)                       |
+
+---
+
+## Getting Started
+
+### 1. Define Your Protocol
+
+Create a `.proto` file defining your RPC messages. Each command is a Request/Response pair:
+
+```protobuf
+syntax = "proto3";
+package blerpc;
+
+message EchoRequest {
+  string message = 1;
+}
+
+message EchoResponse {
+  string message = 1;
+}
+
+message FlashReadRequest {
+  uint32 address = 1;
+  uint32 length = 2;
+}
+
+message FlashReadResponse {
+  uint32 address = 1;
+  bytes data = 2;
+}
+```
+
+Commands are automatically discovered from matching `*Request` / `*Response` pairs. For example, `EchoRequest` + `EchoResponse` generates an `echo` command.
+
+### 2. Code Generation
+
+The `generate-handlers` tool generates handler stubs and client code for all supported languages.
+
+#### Build the generator
+
+```bash
+cd tools/generate-handlers
+go build -o generate-handlers .
+```
+
+#### Run code generation
+
+```bash
+./generate-handlers -root /path/to/blerpc
+```
+
+This generates the following files:
+
+| Output                                              | Description                          |
+|-----------------------------------------------------|--------------------------------------|
+| `peripheral_fw/src/generated_handlers.h`            | C handler declarations + lookup table |
+| `peripheral_fw/src/generated_handlers.c`            | C weak handler stubs                 |
+| `peripheral_py/generated_handlers.py`               | Python handler stubs                 |
+| `central_py/blerpc/generated/generated_client.py`   | Python client mixin                  |
+| `central_android/.../GeneratedClient.kt`            | Kotlin abstract client               |
+| `central_ios/.../GeneratedClient.swift`             | Swift client protocol extension      |
+| `central_flutter/.../generated_client.dart`         | Dart client mixin                    |
+| `central_rn/.../GeneratedClient.ts`                 | TypeScript abstract client (React Native) |
+| `central_fw/src/generated_client.h`                 | C central client declarations        |
+| `central_fw/src/generated_client.c`                 | C central client implementation      |
+
+### 3. Platform Integration
+
+#### iOS (Swift)
+
+**Dependencies** -- Add to your Xcode project via Swift Package Manager:
+
+```swift
+// Package.swift or Xcode > File > Add Package Dependencies
+https://github.com/tdaira/blerpc-protocol-swift  (from: 0.5.0)
+https://github.com/apple/swift-protobuf.git      (from: 1.28.0)
+```
+
+**Generate Protobuf types:**
+
+```bash
+brew install swift-protobuf
+protoc --swift_out=YourApp/Proto/ \
+  --swift_opt=Visibility=Public \
+  -I proto/ proto/blerpc.proto
+```
+
+**Usage:**
+
+```swift
+let client = BlerpcClient()
+
+// Scan for peripherals
+let devices = try await client.scan()
+try await client.connect(device: devices[0])
+
+// Type-safe RPC call
+let response = try await client.echo(message: "hello")
+print(response.message)  // "hello"
+
+// Read flash data
+let flash = try await client.flashRead(address: 0, length: 8192)
+print(flash.data.count)  // 8192
+
+client.disconnect()
+```
+
+#### Android (Kotlin)
+
+**Dependencies** -- Add to your `build.gradle.kts`:
+
+```kotlin
+repositories {
+    maven {
+        url = uri("https://maven.pkg.github.com/tdaira/blerpc-protocol-kt")
+        credentials { /* GitHub token */ }
+    }
+}
+
+dependencies {
+    implementation("com.blerpc:blerpc-protocol-kt:0.5.0")
+}
+```
+
+**Usage:**
+
+```kotlin
+val client = BlerpcClient(context)
+
+// Scan for peripherals
+val devices = client.scan()
+client.connect(devices[0])
+
+val response = client.echo(message = "hello")
+println(response.message)  // "hello"
+
+client.disconnect()
+```
+
+#### Python (macOS / Linux)
+
+**Dependencies:**
+
+```bash
+pip install bleak protobuf
+pip install git+https://github.com/tdaira/blerpc-protocol.git
+```
+
+**Generate Protobuf types:**
+
+```bash
+protoc --python_out=central_py/blerpc/generated/ \
+  -I proto/ proto/blerpc.proto
+```
+
+**Usage:**
+
+```python
+from blerpc.client import BlerpcClient
+
+client = BlerpcClient()
+
+# Scan for peripherals
+devices = await client.scan()
+await client.connect(devices[0])
+
+resp = await client.echo(message="hello")
+print(resp.message)  # "hello"
+
+flash = await client.flash_read(address=0, length=8192)
+print(len(flash.data))  # 8192
+
+await client.disconnect()
+```
+
+#### Flutter (Dart)
+
+**Dependencies** -- Add to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  blerpc_protocol: ^0.6.0
+  flutter_blue_plus: ^1.35.0
+  protobuf: ^6.0.0
+```
+
+**Generate Protobuf types:**
+
+```bash
+dart pub global activate protoc_plugin
+protoc --dart_out=lib/proto/ \
+  -I proto/ proto/blerpc.proto
+```
+
+**Usage:**
+
+```dart
+final client = BlerpcClient();
+
+// Scan for peripherals
+final devices = await client.scan();
+await client.connect(devices[0]);
+
+// Type-safe RPC call
+final response = await client.echo(message: 'hello');
+print(response.message);  // "hello"
+
+// Read flash data
+final flash = await client.flashRead(address: 0, length: 8192);
+print(flash.data.length);  // 8192
+
+client.disconnect();
+```
+
+#### React Native (TypeScript)
+
+**Dependencies** -- Add to your `package.json`:
+
+```json
+{
+  "dependencies": {
+    "@blerpc/protocol-rn": "file:../blerpc-protocol-rn",
+    "protobufjs": "^7.4.0",
+    "react-native-ble-plx": "^3.2.1",
+    "react-native-get-random-values": "^1.11.0",
+    "buffer": "^6.0.3",
+    "fast-text-encoding": "^1.0.6",
+    "@noble/ciphers": "^1.3.0",
+    "@noble/curves": "^1.9.7",
+    "@noble/hashes": "^1.8.0"
+  }
+}
+```
+
+**Generate Protobuf types:**
+
+```bash
+npx pbjs -t static-module -w commonjs \
+  -o src/proto/blerpc.js ../proto/blerpc.proto
+npx pbts -o src/proto/blerpc.d.ts src/proto/blerpc.js
+```
+
+**Usage:**
+
+```typescript
+import { BlerpcClient } from './client/BlerpcClient';
+import { BleTransport } from './ble/BleTransport';
+
+const transport = new BleTransport();
+const devices = await transport.scan();
+const client = new BlerpcClient(transport);
+await client.connect(devices[0]);
+
+// Type-safe RPC call
+const response = await client.echo({ message: 'hello' });
+console.log(response.message);  // "hello"
+
+// Read flash data
+const flash = await client.flashRead({ address: 0, length: 8192 });
+console.log(flash.data.length);  // 8192
+
+client.disconnect();
+```
+
+#### Zephyr Central (C)
+
+The code generator creates `generated_client.h` and `generated_client.c` with typed wrapper functions for all commands. You implement three transport functions (`blerpc_rpc_call`, `blerpc_stream_receive`, `blerpc_stream_send`) and call the generated API:
+
+```c
+#include "generated_client.h"
+
+// Type-safe RPC call -- protobuf encode/decode is handled
+blerpc_EchoResponse resp;
+int ret = blerpc_echo("Hello from central!", &resp);
+if (ret == 0) {
+    LOG_INF("Echo: %s", resp.message);
+}
+
+// Read flash data (FT_CALLBACK fields handled automatically)
+blerpc_FlashReadResponse flash;
+uint8_t data_buf[8192];
+size_t data_len;
+ret = blerpc_flash_read(0, 8192, &flash, data_buf, sizeof(data_buf), &data_len);
+
+// P2C streaming
+blerpc_CounterStreamResponse results[20];
+size_t count;
+ret = blerpc_counter_stream(20, results, 20, &count);
+```
+
+**Build:**
+
+```bash
+west build -b nrf54l15dk/nrf54l15/cpuapp central_fw
+```
+
+#### Zephyr Peripheral (C)
+
+The generated handlers are `__attribute__((weak))`. Override them in your own source file:
+
+```c
+// handlers.c
+#include "generated_handlers.h"
+#include "blerpc.pb.h"
+
+int handle_echo(const uint8_t *req_data, size_t req_len,
+                pb_ostream_t *ostream) {
+    blerpc_EchoRequest req = blerpc_EchoRequest_init_zero;
+    pb_istream_t stream = pb_istream_from_buffer(req_data, req_len);
+    if (!pb_decode(&stream, blerpc_EchoRequest_fields, &req))
+        return -1;
+
+    blerpc_EchoResponse resp = blerpc_EchoResponse_init_zero;
+    strncpy(resp.message, req.message, sizeof(resp.message) - 1);
+    if (!pb_encode(ostream, blerpc_EchoResponse_fields, &resp))
+        return -1;
+    return 0;
+}
+```
+
+**Build:**
+
+```bash
+# nRF54L15
+west build -b nrf54l15dk/nrf54l15/cpuapp peripheral_fw
+
+# EFR32xG22E
+west build -b xg22_ek2710a peripheral_fw -- -DBOARD_ROOT=/path/to/blerpc
+```
+
+### 4. Testing with Python Central
+
+The easiest way to verify your peripheral is working:
+
+```bash
+# Flash the peripheral firmware
+west flash
+
+# Run the Python integration tests
+cd central_py
+python -m pytest tests/test_integration.py -v
+```
+
+Or use the interactive client:
+
+```python
+python -c "
+import asyncio
+from blerpc.client import BlerpcClient
+
+async def main():
+    client = BlerpcClient()
+    devices = await client.scan()
+    await client.connect(devices[0])
+    resp = await client.echo(message='hello')
+    print(f'Echo: {resp.message}')
+    await client.disconnect()
+
+asyncio.run(main())
+"
+```
+
+---
+
+## Benchmarks
+
+All benchmarks were performed against a **nRF54L15 DK** peripheral running bleRPC firmware with **E2E encryption enabled** (AES-128-GCM). MTU was negotiated to 247 bytes. Connection interval varies by platform.
+
+### Throughput Summary
+
+| Platform            | Flash Read Throughput | Connection Interval |
+|---------------------|-----------------------|---------------------|
+| Python (macOS)      | 30.3 KB/s             | 15ms                |
+| iOS (iPhone 16)     | 32.1 KB/s             | 30ms                |
+| Android (Pixel 5)   | 59.0 KB/s             | 30ms                |
+
+### Python Central (macOS, bleak)
+
+Connection interval: 15ms (macOS negotiation)
+
+| Benchmark              | Result         | Details                        |
+|------------------------|----------------|--------------------------------|
+| flash_read_throughput  | 30.3 KB/s      | 10x 8192 bytes, 264.2 ms/call |
+| flash_read_overhead    | 60.1 ms/call   | 1 byte x 20 calls             |
+| echo_roundtrip         | 60.6 ms/call   | 50 calls                       |
+| data_write_throughput  | 3.3 KB/s       | 200 bytes x 20 calls, 59.9 ms/call |
+| counter_stream (P->C)  | 5.8 ms/item    | 20 items in 117 ms            |
+| counter_upload (C->P)  | 7.4 ms/item    | 20 items in 147 ms            |
+
+Functional tests: echo_basic, echo_empty, echo_max_length (256-char), flash_read_basic (16 bytes), flash_read_8kb (8192 bytes), data_write_basic (1024 bytes), data_write_8kb (8192 bytes), multi_container_echo (250-char), counter_stream (5 items), counter_stream_large (20 items), counter_upload (5 items), counter_upload_large (20 items) -- all PASS.
+
+### iOS Central (iPhone 16, CoreBluetooth)
+
+Connection interval: 30ms (iOS negotiation)
+
+| Benchmark              | Result         | Details                        |
+|------------------------|----------------|--------------------------------|
+| flash_read_throughput  | 32.1 KB/s      | 10x 8192 bytes, 249.0 ms/call |
+| flash_read_overhead    | 62.3 ms/call   | 1 byte x 20 calls             |
+| echo_roundtrip         | 60.0 ms/call   | 50 calls                       |
+| data_write_throughput  | 3.3 KB/s       | 200 bytes x 20 calls, 60.0 ms/call |
+| counter_stream (P->C)  | 6.1 ms/item    | 20 items in 121 ms            |
+| counter_upload (C->P)  | 4.5 ms/item    | 20 items in 91 ms             |
+
+Functional tests: echo_basic, echo_empty, flash_read_basic (64 bytes), flash_read_8kb (8192 bytes), data_write (64 bytes), counter_stream (5 items), counter_upload (5 items) -- all PASS.
+
+### Android Central (Pixel 5)
+
+Connection interval: 30ms (Android negotiation)
+
+| Benchmark              | Result         | Details                        |
+|------------------------|----------------|--------------------------------|
+| flash_read_throughput  | 59.0 KB/s      | 10x 8192 bytes, 135.7 ms/call |
+| flash_read_overhead    | 90.4 ms/call   | 1 byte x 20 calls             |
+| echo_roundtrip         | 62.2 ms/call   | 50 calls                       |
+| data_write_throughput  | 3.2 KB/s       | 200 bytes x 20 calls, 60.3 ms/call |
+| counter_stream (P->C)  | 3.7 ms/item    | 20 items in 73 ms             |
+| counter_upload (C->P)  | 5.1 ms/item    | 20 items in 101 ms            |
+
+Functional tests: echo_basic, echo_empty, flash_read_basic (64 bytes), flash_read_8kb (8192 bytes), data_write (64 bytes), counter_stream (5 items), counter_upload (5 items) -- all PASS.
+
+### Performance Notes
+
+#### Connection Interval Impact
+
+The connection interval (CI) is the primary factor in round-trip latency. Each request-response cycle requires at least 2 connection events:
+
+- **macOS (bleak)**: CI = 15ms -> ~30ms round-trip
+- **iOS (iPhone 16)**: CI = 30ms -> ~60ms round-trip
+- **Android (Pixel 5)**: CI = 30ms -> ~60ms round-trip, but highest throughput due to more packets per connection event
+
+The peripheral advertises preferred CI of 15-30ms (`PREF_MIN_INT=12, PREF_MAX_INT=24`). The actual CI is determined by the Central's OS.
+
+#### Encryption Overhead
+
+E2E encryption adds **20 bytes** per transaction (4-byte counter + 16-byte AES-GCM tag). For large payloads (8 KB), this overhead is negligible (<0.3%). The AES-128-GCM encryption/decryption itself is hardware-accelerated on modern mobile devices and takes <1ms even for 8 KB payloads.
+
+#### Throughput Optimizations
+
+- **nanopb FT_CALLBACK**: Streams flash data directly into protobuf encoding, saving 4KB static RAM
+- **Zero-copy response**: Protobuf response is encoded directly at the container header offset
+- **No inter-packet delay**: Containers are sent back-to-back
+- **Max 8KB per flash read**: Optimal balance between latency and throughput
+
+---
+
+## Protocol Specification
+
+bleRPC uses a layered protocol stack on top of BLE GATT. The **Command Layer** wraps Protocol Buffers payloads with RPC metadata, the optional **Encryption Layer** encrypts the serialized command, and the **Container Layer** fragments them into MTU-sized packets for BLE transmission.
+
+### Protocol Stack
+
+```
+Application
+    |
+    v
+Command Layer (Protobuf encode/decode + command metadata)
+    |
+    v
+Encryption Layer (optional, AES-128-GCM encrypt/decrypt)
+    |
+    v
+Container Layer (MTU-based split/reassemble + sequencing)
+    |
+    v
+BLE GATT (single characteristic)
+```
+
+### BLE Transport
+
+All communication uses a **single GATT Characteristic**:
+
+- **Requests**: Central writes via Write Without Response
+- **Responses**: Peripheral sends via Notify
+
+MTU is negotiated automatically via the BLE ATT MTU Exchange procedure. The application uses the negotiated MTU (minus 3 bytes ATT overhead) to determine the maximum container payload size.
+
+Default timeout is **100ms**, configurable via the timeout control container.
+
+### Container Layer
+
+The container layer splits large payloads into MTU-sized packets and reassembles them on the receiving side. Each container carries a transaction ID and sequence number for tracking and ordering.
+
+All multi-byte fields are **little-endian**.
+
+#### First Container (type=0b00)
+
+The first container in a transaction includes the total payload length.
+
+```
++----------------+------------------+------+----------+-----+---------------+--------------+----------+
+| transaction_id | sequence_number  | type | ctrl_cmd | rsv | total_length  | payload_len  | payload  |
+| 8 bits         | 8 bits           | 2b   | 4 bits   | 2b  | 16 bits (LE)  | 8 bits       | variable |
++----------------+------------------+------+----------+-----+---------------+--------------+----------+
+```
+
+| Field            | Bits | Description                                                                    |
+|------------------|------|--------------------------------------------------------------------------------|
+| transaction_id   | 8    | Unique ID for this request/response pair. Resets per transaction.              |
+| sequence_number  | 8    | Increments with each container sent. Resets per transaction.                   |
+| type             | 2    | `0b00` = first                                                                 |
+| control_cmd      | 4    | `0x0` (unused for data containers)                                             |
+| reserved         | 2    | Zero-filled                                                                    |
+| total_length     | 16   | Total payload size across all containers (bytes, little-endian)                |
+| payload_len      | 8    | Payload size in this container (bytes)                                         |
+| payload          | var  | Fragment of the command data                                                   |
+
+Header size: **6 bytes** (transaction_id + sequence_number + flags + total_length + payload_len)
+
+#### Subsequent Container (type=0b01)
+
+Continuation containers omit `total_length`.
+
+```
++----------------+------------------+------+----------+-----+--------------+----------+
+| transaction_id | sequence_number  | type | ctrl_cmd | rsv | payload_len  | payload  |
+| 8 bits         | 8 bits           | 2b   | 4 bits   | 2b  | 8 bits       | variable |
++----------------+------------------+------+----------+-----+--------------+----------+
+```
+
+Header size: **4 bytes** (no total_length field)
+
+#### Byte 2 Bitfield Detail
+
+The third byte of every container encodes the type, control command, and reserved bits:
+
+```
++------+-------------+----------+
+| type | control_cmd | reserved |
+| 7-6  | 5-2         | 1-0      |
++------+-------------+----------+
+```
+
+- `type`: `00` = first, `01` = subsequent, `11` = control
+- `control_cmd`: `0x0`-`0x6` (only valid when type=`11`)
+- `reserved`: zero-filled
+
+#### Container Splitting Example
+
+A 500-byte command payload with MTU=247 (244 usable after ATT overhead):
+
+| Container | Type       | Header  | Payload   | Total     |
+|-----------|------------|---------|-----------|-----------|
+| 1         | FIRST      | 6 bytes | 238 bytes | 244 bytes |
+| 2         | SUBSEQUENT | 4 bytes | 240 bytes | 244 bytes |
+| 3         | SUBSEQUENT | 4 bytes | 22 bytes  | 26 bytes  |
+
+Total payload: **500 bytes** (238 + 240 + 22)
+
+#### Maximum Payload
+
+The `sequence_number` is 8 bits, limiting a single transaction to ~255 containers. With a typical MTU of 247 (240 bytes per subsequent container), the practical maximum payload per transaction is approximately **60 KB**. For larger transfers, use multiple request/response cycles.
+
+### Control Containers
+
+Control containers (`type=0b11`) carry protocol-level commands instead of application data.
+
+#### Timeout Sharing (control_cmd=0x1)
+
+Allows the peripheral to communicate its processing timeout to the central.
+
+**Request (Central -> Peripheral):**
+
+| Field       | Value              |
+|-------------|--------------------|
+| type        | `0b11` (control)   |
+| control_cmd | `0x1`              |
+| payload_len | `0x00`             |
+
+**Response (Peripheral -> Central):**
+
+| Field       | Value                                  |
+|-------------|----------------------------------------|
+| type        | `0b11` (control)                       |
+| control_cmd | `0x1`                                  |
+| payload_len | `0x02`                                 |
+| payload     | `timeout_ms` (16-bit LE, milliseconds) |
+
+#### Capability Sharing (control_cmd=0x4)
+
+Allows the peripheral to communicate its buffer constraints and feature flags to the central.
+
+**Request (Central -> Peripheral):**
+
+| Field          | Value                                              |
+|----------------|----------------------------------------------------|
+| type           | `0b11` (control)                                   |
+| control_cmd    | `0x4`                                              |
+| payload_len    | `0x06`                                             |
+| payload[0:2]   | `max_request_payload_size` (16-bit LE, typically 0) |
+| payload[2:4]   | `max_response_payload_size` (16-bit LE, typically 0)|
+| payload[4:6]   | `flags` (16-bit LE, typically 0)                    |
+
+**Response (Peripheral -> Central):**
+
+| Field          | Value                                                           |
+|----------------|-----------------------------------------------------------------|
+| type           | `0b11` (control)                                                |
+| control_cmd    | `0x4`                                                           |
+| payload_len    | `0x06`                                                          |
+| payload[0:2]   | `max_request_payload_size` (16-bit LE)                          |
+| payload[2:4]   | `max_response_payload_size` (16-bit LE)                         |
+| payload[4:6]   | `flags` (16-bit LE) -- bit 0: encryption supported              |
+
+When `flags` is absent (4-byte payload for backward compatibility), no optional features are available.
+
+#### Stream End (control_cmd=0x2, 0x3)
+
+Signals the end of a streaming sequence. Either side can terminate a stream.
+
+| control_cmd | Direction              | Description                        |
+|-------------|------------------------|------------------------------------|
+| `0x2`       | Central -> Peripheral  | Central ends the upload stream     |
+| `0x3`       | Peripheral -> Central  | Peripheral ends the download stream|
+
+Both have `payload_len=0x00` (no payload).
+
+#### Error Notification (control_cmd=0x5)
+
+Sent by the peripheral when an error occurs (e.g., response exceeds buffer limits).
+
+| Field       | Value                |
+|-------------|----------------------|
+| type        | `0b11` (control)     |
+| control_cmd | `0x5`                |
+| payload_len | `0x01`               |
+| payload[0]  | Error code           |
+
+Error codes:
+
+- `0x01` -- **RESPONSE_TOO_LARGE**: Response payload exceeds `max_response_payload_size`
+
+#### Key Exchange (control_cmd=0x6)
+
+Carries key exchange handshake payloads for establishing an encrypted session. Used when the peripheral advertises encryption support via the capabilities `flags` field.
+
+| Field       | Value                                                  |
+|-------------|--------------------------------------------------------|
+| type        | `0b11` (control)                                       |
+| control_cmd | `0x6`                                                  |
+| payload_len | variable                                               |
+| payload     | Key exchange step data (see Encryption section)        |
+
+Four containers are exchanged (Step 1-4) to complete the handshake. After completion, all subsequent data containers carry encrypted payloads.
+
+### Encrypted Data Container
+
+When encryption is active, the payload of data containers (FIRST / SUBSEQUENT) is replaced by the encrypted form of the serialized command:
+
+```
++---------+------------+-----+
+| counter | ciphertext | tag |
+| 32 bits | variable   | 128 bits |
++---------+------------+-----+
+```
+
+| Field      | Size     | Description                                                                              |
+|------------|----------|------------------------------------------------------------------------------------------|
+| counter    | 4 bytes  | Monotonically increasing counter (little-endian). Used as AES-GCM nonce and for replay detection. |
+| ciphertext | N bytes  | AES-128-GCM encrypted serialized command                                                 |
+| tag        | 16 bytes | AES-GCM authentication tag                                                               |
+
+Total overhead: **20 bytes** (4 counter + 16 tag). The ciphertext is then split into containers as usual.
+
+### Command Layer
+
+The command layer wraps Protocol Buffers-encoded data with RPC metadata. Commands are identified by name (ASCII string), enabling flexible, human-readable dispatch.
+
+#### Command Format
+
+```
++------+----------+--------------+----------+----------+------+
+| T    | reserved | cmd_name_len | cmd_name | data_len | data |
+| 1 bit| 7 bits   | 8 bits       | variable | 16 bits  | var  |
++------+----------+--------------+----------+----------+------+
+```
+
+| Field        | Bits | Description                                            |
+|--------------|------|--------------------------------------------------------|
+| type         | 1    | `0` = request, `1` = response                          |
+| reserved     | 7    | Zero-filled                                            |
+| cmd_name_len | 8    | Length of the command name in bytes                     |
+| cmd_name     | var  | ASCII command name (e.g., `echo`, `flash_read`)        |
+| data_len     | 16   | Length of the protobuf data (bytes, little-endian)      |
+| data         | var  | Protocol Buffers encoded payload                        |
+
+#### Command Discovery
+
+Commands are automatically generated from `.proto` file definitions. Matching `*Request` / `*Response` message pairs produce a command whose name is the prefix converted to `snake_case`:
+
+| Message Pair                              | Command Name  |
+|-------------------------------------------|---------------|
+| `EchoRequest` + `EchoResponse`            | `echo`        |
+| `FlashReadRequest` + `FlashReadResponse`  | `flash_read`  |
+| `DataWriteRequest` + `DataWriteResponse`  | `data_write`  |
+
+### Request/Response Flow
+
+A complete RPC call involves encoding at the command layer, splitting at the container layer, BLE transmission, and the reverse on the receiving side:
+
+```
+Central                              Peripheral
+   |                                      |
+   | 1. Protobuf encode request           |
+   | 2. Wrap in command header            |
+   | 3. Split into containers             |
+   | --- Write Without Response (FIRST) -->|
+   | --- Write Without Response (SUBSEQ)->|
+   |                 4. Reassemble containers
+   |                 5. Decode command + Protobuf
+   |                 6. Execute handler
+   |                 7. Encode response + split
+   | <--- Notify (FIRST) ----------------|
+   | <--- Notify (SUBSEQUENT...) --------|
+   | 8. Reassemble + decode response     |
+```
+
+### Streaming
+
+bleRPC supports two streaming patterns beyond simple request/response:
+
+#### Peripheral -> Central Stream (Server Streaming)
+
+One request triggers multiple responses. The stream ends with a `STREAM_END_P2C` control container.
+
+```
+Central              Peripheral
+   |                      |
+   | --- Request -------->|
+   | <--- Response 1 ----|
+   | <--- Response 2 ----|
+   | <--- Response 3 ----|
+   | <--- STREAM_END_P2C |
+```
+
+#### Central -> Peripheral Stream (Client Streaming)
+
+Multiple requests are sent, followed by a `STREAM_END_C2P` control container. The peripheral responds with a final message.
+
+```
+Central              Peripheral
+   |                      |
+   | --- Request 1 ------>|
+   | --- Request 2 ------>|
+   | --- Request 3 ------>|
+   | --- STREAM_END_C2P ->|
+   | <--- Final Response -|
+```
+
+### Connection Setup Sequence
+
+When a central connects to a peripheral, it performs these initialization steps:
+
+```
+Central                              Peripheral
+   |                                      |
+   | --- BLE Connect -------------------->|
+   | --- MTU Exchange ------------------->|
+   | --- Discover Services -------------->|
+   | --- Enable Notifications ----------->|
+   | --- Timeout Request (ctrl) --------->|
+   | <--- Timeout Response (e.g. 100ms) -|
+   | --- Capability Request (ctrl) ------>|
+   | <--- Capability Response (max_req, max_resp, flags)
+   |                                      |
+   | [If encryption supported (flags & 0x01):]
+   | --- Key Exchange Step 1 (ctrl 0x6) ->|
+   | <--- Key Exchange Step 2 (ctrl 0x6) -|
+   | --- Key Exchange Step 3 (ctrl 0x6) ->|
+   | <--- Key Exchange Step 4 (ctrl 0x6) -|
+   | [AES-128-GCM session established]    |
+   |                                      |
+   | [Ready for RPC calls]                |
+```
+
+---
+
+## Encryption
+
+bleRPC supports optional end-to-end encryption using a 4-step key exchange handshake followed by AES-128-GCM session encryption. Encryption is negotiated during connection setup and is transparent to the application layer.
+
+### Cryptographic Components
+
+| Component          | Algorithm         |
+|--------------------|-------------------|
+| Key Agreement      | X25519 ECDH       |
+| Authentication     | Ed25519 Signatures |
+| Key Derivation     | HKDF-SHA256       |
+| Session Encryption | AES-128-GCM       |
+| Replay Protection  | Monotonic Counter  |
+
+### Capability Negotiation
+
+Encryption is advertised by the peripheral in the CAPABILITIES response. The 6-byte payload includes a `flags` field:
+
+```
++-------------+--------------+-------+
+| max_request | max_response | flags |
+| 16 bits LE  | 16 bits LE   | 16 bits LE |
++-------------+--------------+-------+
+```
+
+If `flags & 0x01` is set, the peripheral supports encryption and the central should initiate the key exchange handshake.
+
+### Key Exchange Handshake
+
+The handshake uses 4 steps, each carried in a KEY_EXCHANGE control container (`control_cmd=0x6`). Each payload is prefixed with a 1-byte step identifier.
+
+#### Step 1: Central -> Peripheral (33 bytes)
+
+The central generates an ephemeral X25519 keypair and sends its public key.
+
+```
++------+-------------------------+
+| step | central_x25519_pubkey   |
+| 1 B  | 32 bytes                |
++------+-------------------------+
+```
+
+#### Step 2: Peripheral -> Central (129 bytes)
+
+The peripheral generates its own ephemeral X25519 keypair, computes the shared secret, derives the session key, and signs both public keys with its long-term Ed25519 key.
+
+```
++------+----------------------------+-------------------+------------------+
+| step | peripheral_x25519_pubkey   | ed25519_signature | ed25519_pubkey   |
+| 1 B  | 32 bytes                   | 64 bytes          | 32 bytes         |
++------+----------------------------+-------------------+------------------+
+```
+
+The signature covers `central_x25519_pubkey || peripheral_x25519_pubkey` (64 bytes), binding both parties' ephemeral keys to prevent man-in-the-middle attacks.
+
+#### Step 3: Central -> Peripheral (45 bytes)
+
+The central verifies the signature, computes the shared secret and session key, then sends an encrypted confirmation to prove it holds the correct session key.
+
+```
++------+----------+------------+------+
+| step | nonce    | ciphertext | tag  |
+| 1 B  | 12 bytes | 16 bytes   | 16 B |
++------+----------+------------+------+
+```
+
+The plaintext is 16 random bytes encrypted with AES-128-GCM using the derived session key and a random 12-byte nonce.
+
+#### Step 4: Peripheral -> Central (45 bytes)
+
+The peripheral decrypts Step 3 to verify the session key, then sends its own encrypted confirmation.
+
+```
++------+----------+------------+------+
+| step | nonce    | ciphertext | tag  |
+| 1 B  | 12 bytes | 16 bytes   | 16 B |
++------+----------+------------+------+
+```
+
+After the central successfully decrypts Step 4, the handshake is complete and both sides share the same session key.
+
+### Key Derivation
+
+The session key is derived from the X25519 shared secret using HKDF-SHA256:
+
+```
+shared_secret = X25519(my_privkey, peer_pubkey)        # 32 bytes
+session_key   = HKDF-SHA256(
+    salt = central_x25519_pubkey || peripheral_x25519_pubkey,  # 64 bytes
+    ikm  = shared_secret,
+    info = b"blerpc-session-key",
+    len  = 16                                           # AES-128 key
+)
+```
+
+Both central and peripheral perform the same derivation using the concatenation of both X25519 public keys as the salt, arriving at the same 16-byte session key.
+
+### Session Encryption
+
+After the handshake, all command payloads are encrypted before container splitting.
+
+#### Encrypted Payload Format
+
+```
++---------+------------+-----+
+| counter | ciphertext | tag |
+| 32 bits | variable   | 128 bits |
++---------+------------+-----+
+```
+
+#### Encryption Process
+
+1. Serialize the CommandPacket (type + name + protobuf data)
+2. Increment the TX counter
+3. Construct 12-byte nonce: `[counter_LE:4][direction:1][0x00:7]` -- `direction` is `0` for Central->Peripheral, `1` for Peripheral->Central
+4. Encrypt with AES-128-GCM: `ciphertext, tag = AES-GCM(session_key, nonce, plaintext)`
+5. Prepend counter: `[counter:4][ciphertext:N][tag:16]`
+6. Split into containers as usual
+
+#### Decryption Process
+
+1. Reassemble containers into full payload
+2. Extract counter (first 4 bytes), ciphertext, and tag (last 16 bytes)
+3. Verify counter > last received counter (replay detection)
+4. Construct nonce and decrypt with AES-128-GCM
+5. Parse the decrypted data as a CommandPacket
+
+### Replay Detection
+
+Each direction maintains an independent monotonic counter:
+
+- **TX counter**: Incremented before each encryption. Starts at 0.
+- **RX counter**: Tracks the last received counter. Any message with a counter <= the last received counter is rejected.
+
+This prevents replay attacks where an attacker re-sends previously captured encrypted packets.
+
+### Trust Model -- Trust On First Use (TOFU)
+
+On the first connection, the central accepts the peripheral's Ed25519 public key and stores it. On subsequent connections, the central verifies that the peripheral presents the same key. If the key changes, the connection is rejected (or the user is prompted).
+
+This is similar to SSH's `known_hosts` mechanism. It provides protection against man-in-the-middle attacks after the first connection without requiring a PKI or certificate authority.
+
+### Platform Implementation
+
+| Platform       | Crypto Library          | Key Exchange                                              | Session Encryption       |
+|----------------|-------------------------|-----------------------------------------------------------|--------------------------|
+| Python         | `cryptography`          | `CentralKeyExchange` / `PeripheralKeyExchange`            | `BlerpcCryptoSession`    |
+| Kotlin (Android) | Java Crypto           | `CentralKeyExchange`                                      | `BlerpcCryptoSession`    |
+| Swift (iOS)    | CryptoKit               | `CentralKeyExchange`                                      | `BlerpcCryptoSession`    |
+| Dart (Flutter) | `cryptography`          | `CentralKeyExchange`                                      | `BlerpcCryptoSession`    |
+| C (Zephyr)     | PSA Crypto (mbedTLS)    | `blerpc_central_kx_*` / `blerpc_peripheral_kx_*`         | `blerpc_crypto_session`  |
+
+### Configuration
+
+#### Enabling Encryption on Zephyr Firmware
+
+```
+# prj.conf
+CONFIG_BLERPC_ENCRYPTION=y
+```
+
+#### Enabling Encryption on Python Peripheral
+
+```python
+# server.py - encryption is enabled when an Ed25519 signing key is provided.
+# X25519 keypairs are generated ephemerally for each connection.
+peripheral = BlerpcPeripheral(
+    ed25519_private_key_hex="...",
+)
+```
+
+---
+
+## Repositories
+
+bleRPC is organized into a main monorepo and several protocol library packages for each supported language.
+
+### Main Repository
+
+**[tdaira/blerpc](https://github.com/tdaira/blerpc)** -- The main monorepo containing firmware, central clients, code generators, and tests.
+
+| Directory                  | Description                                              |
+|----------------------------|----------------------------------------------------------|
+| `peripheral_fw/`           | Zephyr peripheral firmware (C) -- nRF54L15 & EFR32xG22E |
+| `peripheral_py/`           | Python peripheral (bless) for role-reversal testing      |
+| `central_py/`              | Python central client (bleak) + integration tests        |
+| `central_fw/`              | Zephyr central firmware (C) for device-to-device communication |
+| `central_android/`         | Android central app (Kotlin) with test runner            |
+| `central_ios/`             | iOS central app (Swift) with test runner                 |
+| `central_flutter/`         | Flutter central app (Dart) with test runner              |
+| `central_rn/`              | React Native central app (TypeScript) with test runner   |
+| `proto/`                   | Protocol Buffers definitions (`blerpc.proto`)            |
+| `tools/generate-handlers/` | Code generator (Go) -- generates handlers and clients for all languages |
+| `boards/`                  | Custom board definitions (EFR32xG22E)                    |
+| `docs/`                    | Additional documentation (firmware guide)                |
+
+### Protocol Libraries
+
+Platform-independent protocol encoding/decoding libraries, published as separate packages for each language.
+
+#### blerpc-protocol (Python + C)
+
+**[github.com/tdaira/blerpc-protocol](https://github.com/tdaira/blerpc-protocol)**
+
+Container splitting/reassembly, command encoding/decoding, and E2E encryption (key exchange + AES-128-GCM). The Python package is installable via pip. The C implementation (`c/src/` + `c/include/`) is for embedded use.
+
+```bash
+pip install git+https://github.com/tdaira/blerpc-protocol.git
+```
+
+#### blerpc-protocol-swift (Swift)
+
+**[github.com/tdaira/blerpc-protocol-swift](https://github.com/tdaira/blerpc-protocol-swift)**
+
+Swift Package for iOS and macOS. Uses Foundation and CryptoKit (Apple platform frameworks). Supports iOS 16+ and macOS 13+.
+
+```swift
+.package(url: "https://github.com/tdaira/blerpc-protocol-swift", from: "0.5.0")
+```
+
+#### blerpc-protocol-kt (Kotlin)
+
+**[github.com/tdaira/blerpc-protocol-kt](https://github.com/tdaira/blerpc-protocol-kt)**
+
+Kotlin library for Android. Published to GitHub Packages (Maven).
+
+```kotlin
+implementation("com.blerpc:blerpc-protocol-kt:0.5.0")
+```
+
+#### blerpc-protocol-dart (Dart)
+
+**[github.com/tdaira/blerpc-protocol-dart](https://github.com/tdaira/blerpc-protocol-dart)**
+
+Pure Dart library for Flutter. Published to [pub.dev](https://pub.dev/packages/blerpc_protocol). Uses the `cryptography` package for encryption.
+
+```yaml
+blerpc_protocol: ^0.6.0
+```
+
+#### blerpc-protocol-rn (TypeScript)
+
+**[github.com/tdaira/blerpc-protocol-rn](https://github.com/tdaira/blerpc-protocol-rn)**
+
+TypeScript library for React Native. Uses `@noble/ciphers`, `@noble/curves`, and `@noble/hashes` for encryption (pure JS, no native dependencies).
+
+```json
+"@blerpc/protocol-rn": "file:../blerpc-protocol-rn"
+```
+
+### Architecture Overview
+
+```
+                         bleRPC (monorepo)
+            +-----------------------------------------+
+            |                                         |
+            |  proto/blerpc.proto                     |
+            |       |                                 |
+            |       v                                 |
+            |  tools/generate-handlers (Go)           |
+            |       |                                 |
+            |       +---> peripheral_fw/src/           |
+            |       |     generated_handlers.{c,h}    |
+            |       |                                 |
+            |       +---> central_py/blerpc/generated/ |
+            |       |     generated_client.py         |
+            |       |                                 |
+            |       +---> central_android/.../         |
+            |       |     GeneratedClient.kt          |
+            |       |                                 |
+            |       +---> central_ios/.../             |
+            |       |     GeneratedClient.swift       |
+            |       |                                 |
+            |       +---> central_flutter/.../         |
+            |       |     generated_client.dart       |
+            |       |                                 |
+            |       +---> central_rn/.../              |
+            |       |     GeneratedClient.ts          |
+            |       |                                 |
+            |       +---> central_fw/src/              |
+            |             generated_client.{c,h}      |
+            |                                         |
+            +-----------------------------------------+
+                    |           |            |     |     |
+                    v           v            v     v     v
+           blerpc-protocol  blerpc-     blerpc- blerpc- blerpc-
+           (Python + C)     protocol-kt proto-  proto-  proto-
+                                        swift   dart    rn
+```
+
+### CI / CD
+
+Each repository has GitHub Actions CI that runs on every push and pull request:
+
+| Repository             | CI Checks                                                                    |
+|------------------------|------------------------------------------------------------------------------|
+| blerpc                 | Python tests + ruff lint, C lint (clang-format), Go lint + build, iOS build, Android build, Flutter build |
+| blerpc-protocol        | Python tests + lint, C lint + tests                                          |
+| blerpc-protocol-swift  | swift build, swift test, SwiftLint                                           |
+| blerpc-protocol-kt     | Gradle test, ktlint                                                          |
+| blerpc-protocol-dart   | dart analyze, dart test, auto-publish to pub.dev                             |
+
+### License
+
+All bleRPC repositories are licensed under the **GNU Lesser General Public License v3.0 (LGPL-3.0)** with a static linking exception. You may statically link against bleRPC libraries without being required to provide relinkable object files. See the `LICENSING_EXCEPTION` file in each repository for details.

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>代码仓库 - bleRPC</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="alternate" hreflang="en" href="https://blerpc.net/repositories.html">
+  <link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/repositories.html">
+  <link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/repositories.html">
+  <link rel="alternate" hreflang="x-default" href="https://blerpc.net/repositories.html">
+</head>
+<body>
+  <header></header>
+
+  <main>
+    <h1>代码仓库</h1>
+    <p>bleRPC 由一个主 monorepo 和多个针对各支持语言的协议库包组成。</p>
+
+    <h2>主仓库</h2>
+    <div class="card">
+      <h3><a href="https://github.com/tdaira/blerpc">tdaira/blerpc</a></h3>
+      <p>包含固件、central 客户端、代码生成器和测试的主 monorepo</p>
+      <table>
+        <thead><tr><th>目录</th><th>描述</th></tr></thead>
+        <tbody>
+          <tr><td><code>peripheral_fw/</code></td><td>Zephyr peripheral 固件 (C) &mdash; nRF54L15 &amp; EFR32xG22E</td></tr>
+          <tr><td><code>peripheral_py/</code></td><td>Python peripheral (bless) 用于角色反转测试</td></tr>
+          <tr><td><code>central_py/</code></td><td>Python central 客户端 (bleak) + 集成测试</td></tr>
+          <tr><td><code>central_fw/</code></td><td>Zephyr central 固件 (C) 用于设备间通信</td></tr>
+          <tr><td><code>central_android/</code></td><td>Android central 应用 (Kotlin) 含测试运行器</td></tr>
+          <tr><td><code>central_ios/</code></td><td>iOS central 应用 (Swift) 含测试运行器</td></tr>
+          <tr><td><code>central_flutter/</code></td><td>Flutter central 应用 (Dart) 含测试运行器</td></tr>
+          <tr><td><code>central_rn/</code></td><td>React Native central 应用 (TypeScript) 含测试运行器</td></tr>
+          <tr><td><code>proto/</code></td><td>Protocol Buffers 定义（<code>blerpc.proto</code>）</td></tr>
+          <tr><td><code>tools/generate-handlers/</code></td><td>代码生成器 (Go) &mdash; 为所有语言生成处理器和客户端</td></tr>
+          <tr><td><code>boards/</code></td><td>自定义板卡定义 (EFR32xG22E)</td></tr>
+          <tr><td><code>docs/</code></td><td>附加文档（固件指南）</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>协议库</h2>
+    <p>平台无关的协议编码/解码库，以各语言的独立包发布。</p>
+
+    <div class="grid">
+      <div class="card">
+        <h3><a href="https://github.com/tdaira/blerpc-protocol">blerpc-protocol</a></h3>
+        <p><span class="badge badge-blue">Python</span> <span class="badge badge-blue">C</span></p>
+        <p>容器分割/重组、命令编码/解码，以及端到端加密（密钥交换 + AES-128-GCM）。Python 包可通过 pip 安装。C 实现（<code>c/src/</code> + <code>c/include/</code>）用于嵌入式场景</p>
+        <pre><code class="language-bash">pip install git+https://github.com/tdaira/blerpc-protocol.git</code></pre>
+      </div>
+
+      <div class="card">
+        <h3><a href="https://github.com/tdaira/blerpc-protocol-swift">blerpc-protocol-swift</a></h3>
+        <p><span class="badge badge-blue">Swift</span></p>
+        <p>适用于 iOS 和 macOS 的 Swift Package。使用 Foundation 和 CryptoKit（Apple 平台框架）。支持 iOS 16+ 和 macOS 13+</p>
+        <pre><code class="language-swift">// Swift Package Manager
+.package(url: "https://github.com/tdaira/blerpc-protocol-swift", from: "0.5.0")</code></pre>
+      </div>
+
+      <div class="card">
+        <h3><a href="https://github.com/tdaira/blerpc-protocol-kt">blerpc-protocol-kt</a></h3>
+        <p><span class="badge badge-blue">Kotlin</span></p>
+        <p>适用于 Android 的 Kotlin 库。发布到 GitHub Packages (Maven)</p>
+        <pre><code class="language-kotlin">implementation("com.blerpc:blerpc-protocol-kt:0.5.0")</code></pre>
+      </div>
+
+      <div class="card">
+        <h3><a href="https://github.com/tdaira/blerpc-protocol-dart">blerpc-protocol-dart</a></h3>
+        <p><span class="badge badge-blue">Dart</span></p>
+        <p>适用于 Flutter 的纯 Dart 库。发布到 <a href="https://pub.dev/packages/blerpc_protocol">pub.dev</a>。使用 <code>cryptography</code> 包进行加密</p>
+        <pre><code class="language-yaml">blerpc_protocol: ^0.6.0</code></pre>
+      </div>
+
+      <div class="card">
+        <h3><a href="https://github.com/tdaira/blerpc-protocol-rn">blerpc-protocol-rn</a></h3>
+        <p><span class="badge badge-blue">TypeScript</span></p>
+        <p>适用于 React Native 的 TypeScript 库。使用 <code>@noble/ciphers</code>、<code>@noble/curves</code> 和 <code>@noble/hashes</code> 进行加密（纯 JS，无原生依赖）</p>
+        <pre><code class="language-json">"@blerpc/protocol-rn": "file:../blerpc-protocol-rn"</code></pre>
+      </div>
+    </div>
+
+    <h2>架构概览</h2>
+    <p>各仓库之间的关系：</p>
+    <div class="diagram">
+<pre>
+                         bleRPC (monorepo)
+            +-----------------------------------------+
+            |                                         |
+            |  proto/blerpc.proto                     |
+            |       |                                 |
+            |       v                                 |
+            |  tools/generate-handlers (Go)           |
+            |       |                                 |
+            |       +---> peripheral_fw/src/             |
+            |       |     generated_handlers.{c,h}    |
+            |       |                                 |
+            |       +---> central_py/blerpc/generated/   |
+            |       |     generated_client.py         |
+            |       |                                 |
+            |       +---> central_android/.../         |
+            |       |     GeneratedClient.kt          |
+            |       |                                 |
+            |       +---> central_ios/.../             |
+            |       |     GeneratedClient.swift        |
+            |       |                                 |
+            |       +---> central_flutter/.../         |
+            |       |     generated_client.dart        |
+            |       |                                 |
+            |       +---> central_rn/.../              |
+            |       |     GeneratedClient.ts           |
+            |       |                                 |
+            |       +---> central_fw/src/              |
+            |             generated_client.{c,h}       |
+            |                                         |
+            +-----------------------------------------+
+                    |           |            |     |     |
+                    v           v            v     v     v
+           blerpc-protocol  blerpc-     blerpc- blerpc- blerpc-
+           (Python + C)     protocol-kt proto-  proto-  proto-
+                                        swift   dart    rn
+</pre>
+    </div>
+
+    <h2>CI / CD</h2>
+    <div class="card">
+      <p>每个仓库都配有 GitHub Actions CI，在每次 push 和 pull request 时运行：</p>
+      <table>
+        <thead><tr><th>仓库</th><th>CI 检查项</th></tr></thead>
+        <tbody>
+          <tr><td>blerpc</td><td>Python 测试 + ruff lint，C lint (clang-format)，Go lint + build，iOS build，Android build，Flutter build</td></tr>
+          <tr><td>blerpc-protocol</td><td>Python 测试 + lint，C lint + 测试</td></tr>
+          <tr><td>blerpc-protocol-swift</td><td>swift build，swift test，SwiftLint</td></tr>
+          <tr><td>blerpc-protocol-kt</td><td>Gradle test，ktlint</td></tr>
+          <tr><td>blerpc-protocol-dart</td><td>dart analyze，dart test，自动发布到 pub.dev</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>许可证</h2>
+    <p>所有 bleRPC 仓库均以 <a href="https://www.gnu.org/licenses/lgpl-3.0.html">GNU 宽通用公共许可证 v3.0 (LGPL-3.0)</a> 发布，并附带静态链接例外。您可以静态链接 bleRPC 库而无需提供可重链接的目标文件。详情请参阅各仓库中的 <code>LICENSING_EXCEPTION</code> 文件。</p>
+  </main>
+
+  <footer></footer>
+
+  <script src="../script.js"></script>
+</body>
+</html>

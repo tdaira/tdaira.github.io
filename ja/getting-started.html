@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>はじめに - bleRPC</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="alternate" hreflang="en" href="https://blerpc.net/getting-started.html">
+  <link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/getting-started.html">
+  <link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/getting-started.html">
+  <link rel="alternate" hreflang="x-default" href="https://blerpc.net/getting-started.html">
+</head>
+<body>
+  <header></header>
+
+  <main>
+    <h1>はじめに</h1>
+    <p>このガイドでは、プロトコルの定義、コード生成、およびbleRPCのプロジェクトへの統合方法を説明します。</p>
+
+    <h2>1. プロトコルの定義</h2>
+    <p>RPCメッセージを定義する<code>.proto</code>ファイルを作成します。各コマンドはRequest/Responseのペアです：</p>
+    <pre><code class="language-protobuf">syntax = "proto3";
+package blerpc;
+
+message EchoRequest {
+  string message = 1;
+}
+
+message EchoResponse {
+  string message = 1;
+}
+
+message FlashReadRequest {
+  uint32 address = 1;
+  uint32 length = 2;
+}
+
+message FlashReadResponse {
+  uint32 address = 1;
+  bytes data = 2;
+}</code></pre>
+    <p>コマンドは<code>*Request</code> / <code>*Response</code>のペアから自動的に検出されます。例えば、<code>EchoRequest</code> + <code>EchoResponse</code>から<code>echo</code>コマンドが生成されます。</p>
+
+    <h2>2. コード生成</h2>
+    <p><code>generate-handlers</code>ツールは、対応するすべての言語のハンドラースタブとクライアントコードを生成します。</p>
+
+    <h3>ジェネレーターのビルド</h3>
+    <pre><code class="language-bash">cd tools/generate-handlers
+go build -o generate-handlers .</code></pre>
+
+    <h3>コード生成の実行</h3>
+    <pre><code class="language-bash">./generate-handlers -root /path/to/blerpc</code></pre>
+    <p>以下のファイルが生成されます：</p>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>出力</th><th>説明</th></tr></thead>
+        <tbody>
+          <tr><td><code>peripheral_fw/src/generated_handlers.h</code></td><td>Cハンドラー宣言 + ルックアップテーブル</td></tr>
+          <tr><td><code>peripheral_fw/src/generated_handlers.c</code></td><td>C weakハンドラースタブ</td></tr>
+          <tr><td><code>peripheral_py/generated_handlers.py</code></td><td>Pythonハンドラースタブ</td></tr>
+          <tr><td><code>central_py/blerpc/generated/generated_client.py</code></td><td>Pythonクライアントmixin</td></tr>
+          <tr><td><code>central_android/.../GeneratedClient.kt</code></td><td>Kotlin抽象クライアント</td></tr>
+          <tr><td><code>central_ios/.../GeneratedClient.swift</code></td><td>Swiftクライアントプロトコル拡張</td></tr>
+          <tr><td><code>central_flutter/.../generated_client.dart</code></td><td>Dartクライアントmixin</td></tr>
+          <tr><td><code>central_rn/.../GeneratedClient.ts</code></td><td>TypeScript抽象クライアント（React Native）</td></tr>
+          <tr><td><code>central_fw/src/generated_client.h</code></td><td>C centralクライアント宣言</td></tr>
+          <tr><td><code>central_fw/src/generated_client.c</code></td><td>C centralクライアント実装</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>3. プラットフォーム統合</h2>
+
+    <h3>iOS (Swift)</h3>
+    <div class="card">
+      <h3>依存関係</h3>
+      <p>Swift Package Managerを使ってXcodeプロジェクトに追加します：</p>
+      <pre><code class="language-swift">// Package.swift or Xcode > File > Add Package Dependencies
+https://github.com/tdaira/blerpc-protocol-swift  (from: 0.5.0)
+https://github.com/apple/swift-protobuf.git      (from: 1.28.0)</code></pre>
+      <h3>Protobuf型の生成</h3>
+      <pre><code class="language-bash">brew install swift-protobuf
+protoc --swift_out=YourApp/Proto/ \
+  --swift_opt=Visibility=Public \
+  -I proto/ proto/blerpc.proto</code></pre>
+      <h3>使い方</h3>
+      <pre><code class="language-swift">let client = BlerpcClient()
+
+// ペリフェラルをスキャン
+let devices = try await client.scan()
+try await client.connect(device: devices[0])
+
+// 型安全なRPC呼び出し
+let response = try await client.echo(message: "hello")
+print(response.message)  // "hello"
+
+// フラッシュデータの読み取り
+let flash = try await client.flashRead(address: 0, length: 8192)
+print(flash.data.count)  // 8192
+
+client.disconnect()</code></pre>
+    </div>
+
+    <h3>Android (Kotlin)</h3>
+    <div class="card">
+      <h3>依存関係</h3>
+      <p><code>build.gradle.kts</code>に追加します：</p>
+      <pre><code class="language-kotlin">repositories {
+    maven {
+        url = uri("https://maven.pkg.github.com/tdaira/blerpc-protocol-kt")
+        credentials { /* GitHub token */ }
+    }
+}
+
+dependencies {
+    implementation("com.blerpc:blerpc-protocol-kt:0.5.0")
+}</code></pre>
+      <h3>使い方</h3>
+      <pre><code class="language-kotlin">val client = BlerpcClient(context)
+
+// ペリフェラルをスキャン
+val devices = client.scan()
+client.connect(devices[0])
+
+val response = client.echo(message = "hello")
+println(response.message)  // "hello"
+
+client.disconnect()</code></pre>
+    </div>
+
+    <h3>Python (macOS / Linux)</h3>
+    <div class="card">
+      <h3>依存関係</h3>
+      <pre><code class="language-bash">pip install bleak protobuf
+pip install git+https://github.com/tdaira/blerpc-protocol.git</code></pre>
+      <h3>Protobuf型の生成</h3>
+      <pre><code class="language-bash">protoc --python_out=central_py/blerpc/generated/ \
+  -I proto/ proto/blerpc.proto</code></pre>
+      <h3>使い方</h3>
+      <pre><code class="language-python">from blerpc.client import BlerpcClient
+
+client = BlerpcClient()
+
+# ペリフェラルをスキャン
+devices = await client.scan()
+await client.connect(devices[0])
+
+resp = await client.echo(message="hello")
+print(resp.message)  # "hello"
+
+flash = await client.flash_read(address=0, length=8192)
+print(len(flash.data))  # 8192
+
+await client.disconnect()</code></pre>
+    </div>
+
+    <h3>Flutter (Dart)</h3>
+    <div class="card">
+      <h3>依存関係</h3>
+      <p><code>pubspec.yaml</code>に追加します：</p>
+      <pre><code class="language-yaml">dependencies:
+  blerpc_protocol: ^0.6.0
+  flutter_blue_plus: ^1.35.0
+  protobuf: ^6.0.0</code></pre>
+      <h3>Protobuf型の生成</h3>
+      <pre><code class="language-bash">dart pub global activate protoc_plugin
+protoc --dart_out=lib/proto/ \
+  -I proto/ proto/blerpc.proto</code></pre>
+      <h3>使い方</h3>
+      <pre><code class="language-dart">final client = BlerpcClient();
+
+// ペリフェラルをスキャン
+final devices = await client.scan();
+await client.connect(devices[0]);
+
+// 型安全なRPC呼び出し
+final response = await client.echo(message: 'hello');
+print(response.message);  // "hello"
+
+// フラッシュデータの読み取り
+final flash = await client.flashRead(address: 0, length: 8192);
+print(flash.data.length);  // 8192
+
+client.disconnect();</code></pre>
+    </div>
+
+    <h3>React Native (TypeScript)</h3>
+    <div class="card">
+      <h3>依存関係</h3>
+      <p><code>package.json</code>に追加します：</p>
+      <pre><code class="language-json">{
+  "dependencies": {
+    "@blerpc/protocol-rn": "file:../blerpc-protocol-rn",
+    "protobufjs": "^7.4.0",
+    "react-native-ble-plx": "^3.2.1",
+    "react-native-get-random-values": "^1.11.0",
+    "buffer": "^6.0.3",
+    "fast-text-encoding": "^1.0.6",
+    "@noble/ciphers": "^1.3.0",
+    "@noble/curves": "^1.9.7",
+    "@noble/hashes": "^1.8.0"
+  }
+}</code></pre>
+      <h3>Protobuf型の生成</h3>
+      <pre><code class="language-bash">npx pbjs -t static-module -w commonjs \
+  -o src/proto/blerpc.js ../proto/blerpc.proto
+npx pbts -o src/proto/blerpc.d.ts src/proto/blerpc.js</code></pre>
+      <h3>使い方</h3>
+      <pre><code class="language-typescript">import { BlerpcClient } from './client/BlerpcClient';
+import { BleTransport } from './ble/BleTransport';
+
+const transport = new BleTransport();
+const devices = await transport.scan();
+const client = new BlerpcClient(transport);
+await client.connect(devices[0]);
+
+// 型安全なRPC呼び出し
+const response = await client.echo({ message: 'hello' });
+console.log(response.message);  // "hello"
+
+// フラッシュデータの読み取り
+const flash = await client.flashRead({ address: 0, length: 8192 });
+console.log(flash.data.length);  // 8192
+
+client.disconnect();</code></pre>
+    </div>
+
+    <h3>Zephyr Central (C)</h3>
+    <div class="card">
+      <h3>生成されたクライアント</h3>
+      <p>コードジェネレーターは、すべてのコマンドに対する型付きラッパー関数を持つ<code>generated_client.h</code>と<code>generated_client.c</code>を生成します。3つのトランスポート関数（<code>blerpc_rpc_call</code>、<code>blerpc_stream_receive</code>、<code>blerpc_stream_send</code>）を実装し、生成されたAPIを呼び出します：</p>
+      <pre><code class="language-c">#include "generated_client.h"
+
+// 型安全なRPC呼び出し — protobufのエンコード/デコードは自動的に処理されます
+blerpc_EchoResponse resp;
+int ret = blerpc_echo("Hello from central!", &amp;resp);
+if (ret == 0) {
+    LOG_INF("Echo: %s", resp.message);
+}
+
+// フラッシュデータの読み取り（FT_CALLBACKフィールドは自動的に処理されます）
+blerpc_FlashReadResponse flash;
+uint8_t data_buf[8192];
+size_t data_len;
+ret = blerpc_flash_read(0, 8192, &amp;flash, data_buf, sizeof(data_buf), &amp;data_len);
+
+// P2Cストリーミング
+blerpc_CounterStreamResponse results[20];
+size_t count;
+ret = blerpc_counter_stream(20, results, 20, &amp;count);</code></pre>
+      <h3>ビルド</h3>
+      <pre><code class="language-bash">west build -b nrf54l15dk/nrf54l15/cpuapp central_fw</code></pre>
+    </div>
+
+    <h3>Zephyr Peripheral (C)</h3>
+    <div class="card">
+      <h3>ハンドラーの実装</h3>
+      <p>生成されたハンドラーは<code>__attribute__((weak))</code>です。独自のソースファイルでオーバーライドします：</p>
+      <pre><code class="language-c">// handlers.c
+#include "generated_handlers.h"
+#include "blerpc.pb.h"
+
+int handle_echo(const uint8_t *req_data, size_t req_len,
+                pb_ostream_t *ostream) {
+    blerpc_EchoRequest req = blerpc_EchoRequest_init_zero;
+    pb_istream_t stream = pb_istream_from_buffer(req_data, req_len);
+    if (!pb_decode(&amp;stream, blerpc_EchoRequest_fields, &amp;req))
+        return -1;
+
+    blerpc_EchoResponse resp = blerpc_EchoResponse_init_zero;
+    strncpy(resp.message, req.message, sizeof(resp.message) - 1);
+    if (!pb_encode(ostream, blerpc_EchoResponse_fields, &amp;resp))
+        return -1;
+    return 0;
+}</code></pre>
+      <h3>ビルド</h3>
+      <pre><code class="language-bash"># nRF54L15
+west build -b nrf54l15dk/nrf54l15/cpuapp peripheral_fw
+
+# EFR32xG22E
+west build -b xg22_ek2710a peripheral_fw -- -DBOARD_ROOT=/path/to/blerpc</code></pre>
+    </div>
+
+    <h2>4. Python Centralでのテスト</h2>
+    <p>ペリフェラルの動作確認に最も簡単な方法：</p>
+    <pre><code class="language-bash"># ペリフェラルファームウェアを書き込み
+west flash
+
+# Python統合テストを実行
+cd central_py
+python -m pytest tests/test_integration.py -v</code></pre>
+    <p>または、インタラクティブクライアントを使用します：</p>
+    <pre><code class="language-python">python -c "
+import asyncio
+from blerpc.client import BlerpcClient
+
+async def main():
+    client = BlerpcClient()
+    devices = await client.scan()
+    await client.connect(devices[0])
+    resp = await client.echo(message='hello')
+    print(f'Echo: {resp.message}')
+    await client.disconnect()
+
+asyncio.run(main())
+"</code></pre>
+  </main>
+
+  <footer></footer>
+
+  <script src="../script.js"></script>
+</body>
+</html>

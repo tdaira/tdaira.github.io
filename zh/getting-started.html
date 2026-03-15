@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>快速开始 - bleRPC</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="alternate" hreflang="en" href="https://blerpc.net/getting-started.html">
+  <link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/getting-started.html">
+  <link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/getting-started.html">
+  <link rel="alternate" hreflang="x-default" href="https://blerpc.net/getting-started.html">
+</head>
+<body>
+  <header></header>
+
+  <main>
+    <h1>快速开始</h1>
+    <p>本指南介绍如何定义协议、生成代码以及将 bleRPC 集成到您的项目中。</p>
+
+    <h2>1. 定义协议</h2>
+    <p>创建一个 <code>.proto</code> 文件来定义 RPC 消息。每个命令是一个请求/响应对：</p>
+    <pre><code class="language-protobuf">syntax = "proto3";
+package blerpc;
+
+message EchoRequest {
+  string message = 1;
+}
+
+message EchoResponse {
+  string message = 1;
+}
+
+message FlashReadRequest {
+  uint32 address = 1;
+  uint32 length = 2;
+}
+
+message FlashReadResponse {
+  uint32 address = 1;
+  bytes data = 2;
+}</code></pre>
+    <p>命令从匹配的 <code>*Request</code> / <code>*Response</code> 对中自动发现。例如，<code>EchoRequest</code> + <code>EchoResponse</code> 会生成 <code>echo</code> 命令。</p>
+
+    <h2>2. 代码生成</h2>
+    <p><code>generate-handlers</code> 工具为所有支持的语言生成处理器桩代码和客户端代码。</p>
+
+    <h3>构建生成器</h3>
+    <pre><code class="language-bash">cd tools/generate-handlers
+go build -o generate-handlers .</code></pre>
+
+    <h3>运行代码生成</h3>
+    <pre><code class="language-bash">./generate-handlers -root /path/to/blerpc</code></pre>
+    <p>这将生成以下文件：</p>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>输出</th><th>描述</th></tr></thead>
+        <tbody>
+          <tr><td><code>peripheral_fw/src/generated_handlers.h</code></td><td>C 处理器声明 + 查找表</td></tr>
+          <tr><td><code>peripheral_fw/src/generated_handlers.c</code></td><td>C 弱引用处理器桩</td></tr>
+          <tr><td><code>peripheral_py/generated_handlers.py</code></td><td>Python 处理器桩</td></tr>
+          <tr><td><code>central_py/blerpc/generated/generated_client.py</code></td><td>Python 客户端 mixin</td></tr>
+          <tr><td><code>central_android/.../GeneratedClient.kt</code></td><td>Kotlin 抽象客户端</td></tr>
+          <tr><td><code>central_ios/.../GeneratedClient.swift</code></td><td>Swift 客户端协议扩展</td></tr>
+          <tr><td><code>central_flutter/.../generated_client.dart</code></td><td>Dart 客户端 mixin</td></tr>
+          <tr><td><code>central_rn/.../GeneratedClient.ts</code></td><td>TypeScript 抽象客户端（React Native）</td></tr>
+          <tr><td><code>central_fw/src/generated_client.h</code></td><td>C central 客户端声明</td></tr>
+          <tr><td><code>central_fw/src/generated_client.c</code></td><td>C central 客户端实现</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>3. 平台集成</h2>
+
+    <h3>iOS (Swift)</h3>
+    <div class="card">
+      <h3>依赖</h3>
+      <p>通过 Swift Package Manager 添加到您的 Xcode 项目：</p>
+      <pre><code class="language-swift">// Package.swift or Xcode > File > Add Package Dependencies
+https://github.com/tdaira/blerpc-protocol-swift  (from: 0.5.0)
+https://github.com/apple/swift-protobuf.git      (from: 1.28.0)</code></pre>
+      <h3>生成 Protobuf 类型</h3>
+      <pre><code class="language-bash">brew install swift-protobuf
+protoc --swift_out=YourApp/Proto/ \
+  --swift_opt=Visibility=Public \
+  -I proto/ proto/blerpc.proto</code></pre>
+      <h3>使用方法</h3>
+      <pre><code class="language-swift">let client = BlerpcClient()
+
+// Scan for peripherals
+let devices = try await client.scan()
+try await client.connect(device: devices[0])
+
+// Type-safe RPC call
+let response = try await client.echo(message: "hello")
+print(response.message)  // "hello"
+
+// Read flash data
+let flash = try await client.flashRead(address: 0, length: 8192)
+print(flash.data.count)  // 8192
+
+client.disconnect()</code></pre>
+    </div>
+
+    <h3>Android (Kotlin)</h3>
+    <div class="card">
+      <h3>依赖</h3>
+      <p>添加到您的 <code>build.gradle.kts</code>：</p>
+      <pre><code class="language-kotlin">repositories {
+    maven {
+        url = uri("https://maven.pkg.github.com/tdaira/blerpc-protocol-kt")
+        credentials { /* GitHub token */ }
+    }
+}
+
+dependencies {
+    implementation("com.blerpc:blerpc-protocol-kt:0.5.0")
+}</code></pre>
+      <h3>使用方法</h3>
+      <pre><code class="language-kotlin">val client = BlerpcClient(context)
+
+// Scan for peripherals
+val devices = client.scan()
+client.connect(devices[0])
+
+val response = client.echo(message = "hello")
+println(response.message)  // "hello"
+
+client.disconnect()</code></pre>
+    </div>
+
+    <h3>Python (macOS / Linux)</h3>
+    <div class="card">
+      <h3>依赖</h3>
+      <pre><code class="language-bash">pip install bleak protobuf
+pip install git+https://github.com/tdaira/blerpc-protocol.git</code></pre>
+      <h3>生成 Protobuf 类型</h3>
+      <pre><code class="language-bash">protoc --python_out=central_py/blerpc/generated/ \
+  -I proto/ proto/blerpc.proto</code></pre>
+      <h3>使用方法</h3>
+      <pre><code class="language-python">from blerpc.client import BlerpcClient
+
+client = BlerpcClient()
+
+# Scan for peripherals
+devices = await client.scan()
+await client.connect(devices[0])
+
+resp = await client.echo(message="hello")
+print(resp.message)  # "hello"
+
+flash = await client.flash_read(address=0, length=8192)
+print(len(flash.data))  # 8192
+
+await client.disconnect()</code></pre>
+    </div>
+
+    <h3>Flutter (Dart)</h3>
+    <div class="card">
+      <h3>依赖</h3>
+      <p>添加到您的 <code>pubspec.yaml</code>：</p>
+      <pre><code class="language-yaml">dependencies:
+  blerpc_protocol: ^0.6.0
+  flutter_blue_plus: ^1.35.0
+  protobuf: ^6.0.0</code></pre>
+      <h3>生成 Protobuf 类型</h3>
+      <pre><code class="language-bash">dart pub global activate protoc_plugin
+protoc --dart_out=lib/proto/ \
+  -I proto/ proto/blerpc.proto</code></pre>
+      <h3>使用方法</h3>
+      <pre><code class="language-dart">final client = BlerpcClient();
+
+// Scan for peripherals
+final devices = await client.scan();
+await client.connect(devices[0]);
+
+// Type-safe RPC call
+final response = await client.echo(message: 'hello');
+print(response.message);  // "hello"
+
+// Read flash data
+final flash = await client.flashRead(address: 0, length: 8192);
+print(flash.data.length);  // 8192
+
+client.disconnect();</code></pre>
+    </div>
+
+    <h3>React Native (TypeScript)</h3>
+    <div class="card">
+      <h3>依赖</h3>
+      <p>添加到您的 <code>package.json</code>：</p>
+      <pre><code class="language-json">{
+  "dependencies": {
+    "@blerpc/protocol-rn": "file:../blerpc-protocol-rn",
+    "protobufjs": "^7.4.0",
+    "react-native-ble-plx": "^3.2.1",
+    "react-native-get-random-values": "^1.11.0",
+    "buffer": "^6.0.3",
+    "fast-text-encoding": "^1.0.6",
+    "@noble/ciphers": "^1.3.0",
+    "@noble/curves": "^1.9.7",
+    "@noble/hashes": "^1.8.0"
+  }
+}</code></pre>
+      <h3>生成 Protobuf 类型</h3>
+      <pre><code class="language-bash">npx pbjs -t static-module -w commonjs \
+  -o src/proto/blerpc.js ../proto/blerpc.proto
+npx pbts -o src/proto/blerpc.d.ts src/proto/blerpc.js</code></pre>
+      <h3>使用方法</h3>
+      <pre><code class="language-typescript">import { BlerpcClient } from './client/BlerpcClient';
+import { BleTransport } from './ble/BleTransport';
+
+const transport = new BleTransport();
+const devices = await transport.scan();
+const client = new BlerpcClient(transport);
+await client.connect(devices[0]);
+
+// Type-safe RPC call
+const response = await client.echo({ message: 'hello' });
+console.log(response.message);  // "hello"
+
+// Read flash data
+const flash = await client.flashRead({ address: 0, length: 8192 });
+console.log(flash.data.length);  // 8192
+
+client.disconnect();</code></pre>
+    </div>
+
+    <h3>Zephyr Central (C)</h3>
+    <div class="card">
+      <h3>生成的客户端</h3>
+      <p>代码生成器会创建 <code>generated_client.h</code> 和 <code>generated_client.c</code>，其中包含所有命令的类型化包装函数。您需要实现三个传输函数（<code>blerpc_rpc_call</code>、<code>blerpc_stream_receive</code>、<code>blerpc_stream_send</code>），然后调用生成的 API：</p>
+      <pre><code class="language-c">#include "generated_client.h"
+
+// Type-safe RPC call — protobuf encode/decode is handled
+blerpc_EchoResponse resp;
+int ret = blerpc_echo("Hello from central!", &amp;resp);
+if (ret == 0) {
+    LOG_INF("Echo: %s", resp.message);
+}
+
+// Read flash data (FT_CALLBACK fields handled automatically)
+blerpc_FlashReadResponse flash;
+uint8_t data_buf[8192];
+size_t data_len;
+ret = blerpc_flash_read(0, 8192, &amp;flash, data_buf, sizeof(data_buf), &amp;data_len);
+
+// P2C streaming
+blerpc_CounterStreamResponse results[20];
+size_t count;
+ret = blerpc_counter_stream(20, results, 20, &amp;count);</code></pre>
+      <h3>构建</h3>
+      <pre><code class="language-bash">west build -b nrf54l15dk/nrf54l15/cpuapp central_fw</code></pre>
+    </div>
+
+    <h3>Zephyr Peripheral (C)</h3>
+    <div class="card">
+      <h3>实现处理器</h3>
+      <p>生成的处理器使用 <code>__attribute__((weak))</code>。在您自己的源文件中重写它们：</p>
+      <pre><code class="language-c">// handlers.c
+#include "generated_handlers.h"
+#include "blerpc.pb.h"
+
+int handle_echo(const uint8_t *req_data, size_t req_len,
+                pb_ostream_t *ostream) {
+    blerpc_EchoRequest req = blerpc_EchoRequest_init_zero;
+    pb_istream_t stream = pb_istream_from_buffer(req_data, req_len);
+    if (!pb_decode(&amp;stream, blerpc_EchoRequest_fields, &amp;req))
+        return -1;
+
+    blerpc_EchoResponse resp = blerpc_EchoResponse_init_zero;
+    strncpy(resp.message, req.message, sizeof(resp.message) - 1);
+    if (!pb_encode(ostream, blerpc_EchoResponse_fields, &amp;resp))
+        return -1;
+    return 0;
+}</code></pre>
+      <h3>构建</h3>
+      <pre><code class="language-bash"># nRF54L15
+west build -b nrf54l15dk/nrf54l15/cpuapp peripheral_fw
+
+# EFR32xG22E
+west build -b xg22_ek2710a peripheral_fw -- -DBOARD_ROOT=/path/to/blerpc</code></pre>
+    </div>
+
+    <h2>4. 使用 Python Central 进行测试</h2>
+    <p>验证 peripheral 是否正常工作的最简单方法：</p>
+    <pre><code class="language-bash"># Flash the peripheral firmware
+west flash
+
+# Run the Python integration tests
+cd central_py
+python -m pytest tests/test_integration.py -v</code></pre>
+    <p>或者使用交互式客户端：</p>
+    <pre><code class="language-python">python -c "
+import asyncio
+from blerpc.client import BlerpcClient
+
+async def main():
+    client = BlerpcClient()
+    devices = await client.scan()
+    await client.connect(devices[0])
+    resp = await client.echo(message='hello')
+    print(f'Echo: {resp.message}')
+    await client.disconnect()
+
+asyncio.run(main())
+"</code></pre>
+  </main>
+
+  <footer></footer>
+
+  <script src="../script.js"></script>
+</body>
+</html>

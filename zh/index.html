@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>bleRPC - 基于低功耗蓝牙的类型安全 RPC</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="alternate" hreflang="en" href="https://blerpc.net/index.html">
+  <link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/index.html">
+  <link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/index.html">
+  <link rel="alternate" hreflang="x-default" href="https://blerpc.net/index.html">
+</head>
+<body>
+  <header></header>
+
+  <main>
+    <div class="hero">
+      <div class="hero-logo"></div>
+      <p>基于低功耗蓝牙的类型安全、高性能、安全的 RPC 框架</p>
+    </div>
+
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <path d="M9 13l-2 2 2 2"/>
+            <path d="M15 13l2 2-2 2"/>
+          </svg>
+        </div>
+        <h3>Protocol Buffers</h3>
+        <p>使用 <code>.proto</code> 文件定义 BLE 通信。获得类型安全、语言无关的序列化，消除一切歧义</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+        </div>
+        <h3>高性能</h3>
+        <p>通过 MTU 感知的分片和零拷贝优化，实现接近 BLE 最大吞吐量（约 30 KB/s）</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </div>
+        <h3>端到端加密</h3>
+        <p>可选的<a href="encryption.html">端到端加密</a>，采用 X25519 密钥交换、Ed25519 签名和 AES-128-GCM 会话加密</p>
+      </div>
+    </div>
+
+    <h2>工作原理</h2>
+    <p>bleRPC 在 BLE GATT 之上提供分层协议栈：</p>
+    <ol>
+      <li><strong>命令层</strong> &mdash; 使用命令元数据（名称、类型、数据长度）包装 Protocol Buffers 载荷</li>
+      <li><strong>加密层</strong>（可选）&mdash; 在<a href="encryption.html">4 步密钥交换</a>后使用 AES-128-GCM 加密序列化的命令</li>
+      <li><strong>容器层</strong> &mdash; 将载荷分片为 MTU 大小的容器进行 BLE 传输，并在接收端重新组装</li>
+    </ol>
+    <p>所有通信使用单个 GATT Characteristic：Central 通过 <em>Write Without Response</em> 写入请求，并通过 <em>Notify</em> 接收响应。</p>
+
+    <div class="diagram">
+      <pre class="mermaid" id="sequence-diagram">
+sequenceDiagram
+    participant C as Central&lt;br/&gt;(iOS / Android / Flutter / RN / Python)
+    participant P as Peripheral&lt;br/&gt;(Zephyr / Python)
+    Note over C: Protobuf encode + Command wrap
+    Note over C: Encrypt (if enabled)
+    Note over C: Split into MTU containers
+    C->>+P: Write Without Response (containers)
+    Note over P: Reassemble containers
+    Note over P: Decrypt (if enabled)
+    Note over P: Decode command + Protobuf
+    Note over P: Execute handler
+    Note over P: Encode response + Encrypt + Split
+    P->>-C: Notify (containers)
+    Note over C: Reassemble + Decrypt + Decode
+      </pre>
+    </div>
+
+    <h2>支持的平台</h2>
+
+    <h3>Central（客户端）</h3>
+    <table>
+      <thead><tr><th>平台</th><th>语言</th><th>BLE 协议栈</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td>iOS</td><td>Swift</td><td>CoreBluetooth</td><td><span class="badge badge-green">稳定</span></td></tr>
+        <tr><td>Android</td><td>Kotlin</td><td>Android BLE</td><td><span class="badge badge-green">稳定</span></td></tr>
+        <tr><td>iOS / Android</td><td>Dart (Flutter)</td><td>flutter_blue_plus</td><td><span class="badge badge-green">稳定</span></td></tr>
+        <tr><td>iOS / Android</td><td>TypeScript (React Native)</td><td>react-native-ble-plx</td><td><span class="badge badge-green">稳定</span></td></tr>
+        <tr><td>macOS / Linux</td><td>Python</td><td>bleak</td><td><span class="badge badge-green">稳定</span></td></tr>
+        <tr><td>Zephyr (nRF54L15)</td><td>C</td><td>Zephyr BLE</td><td><span class="badge badge-green">稳定</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3>Peripheral（服务端）</h3>
+    <table>
+      <thead><tr><th>平台</th><th>语言</th><th>BLE 协议栈</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td>Zephyr (nRF54L15)</td><td>C</td><td>Zephyr BLE</td><td><span class="badge badge-green">稳定</span></td></tr>
+        <tr><td>Zephyr (EFR32xG22E)</td><td>C</td><td>Zephyr BLE + SiLabs HCI</td><td><span class="badge badge-green">稳定</span></td></tr>
+        <tr><td>macOS</td><td>Python</td><td>bless</td><td><span class="badge badge-green">稳定</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3>协议库</h3>
+    <table>
+      <thead><tr><th>语言</th><th>包</th><th>依赖</th></tr></thead>
+      <tbody>
+        <tr><td>Swift</td><td><a href="https://github.com/tdaira/blerpc-protocol-swift">blerpc-protocol-swift</a></td><td>Foundation + CryptoKit</td></tr>
+        <tr><td>Kotlin</td><td><a href="https://github.com/tdaira/blerpc-protocol-kt">blerpc-protocol-kt</a></td><td>Protobuf JavaLite</td></tr>
+        <tr><td>Dart</td><td><a href="https://pub.dev/packages/blerpc_protocol">blerpc-protocol-dart</a></td><td>cryptography</td></tr>
+        <tr><td>Python</td><td><a href="https://github.com/tdaira/blerpc-protocol">blerpc-protocol</a></td><td>cryptography</td></tr>
+        <tr><td>TypeScript</td><td><a href="https://github.com/tdaira/blerpc-protocol-rn">blerpc-protocol-rn</a></td><td>@noble/ciphers + @noble/curves + @noble/hashes</td></tr>
+        <tr><td>C</td><td><a href="https://github.com/tdaira/blerpc-protocol">blerpc-protocol/c</a></td><td>无（Zephyr 上使用 PSA Crypto）</td></tr>
+      </tbody>
+    </table>
+  </main>
+
+  <footer></footer>
+
+  <script src="../script.js"></script>
+</body>
+</html>

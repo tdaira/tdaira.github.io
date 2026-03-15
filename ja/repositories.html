@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>リポジトリ - bleRPC</title>
+  <link rel="stylesheet" href="../style.css">
+  <link rel="alternate" hreflang="en" href="https://blerpc.net/repositories.html">
+  <link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/repositories.html">
+  <link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/repositories.html">
+  <link rel="alternate" hreflang="x-default" href="https://blerpc.net/repositories.html">
+</head>
+<body>
+  <header></header>
+
+  <main>
+    <h1>リポジトリ</h1>
+    <p>bleRPCは、メインのモノレポと、対応する各言語向けのプロトコルライブラリパッケージで構成されています。</p>
+
+    <h2>メインリポジトリ</h2>
+    <div class="card">
+      <h3><a href="https://github.com/tdaira/blerpc">tdaira/blerpc</a></h3>
+      <p>ファームウェア、セントラルクライアント、コードジェネレーター、テストを含むメインのモノレポ</p>
+      <table>
+        <thead><tr><th>ディレクトリ</th><th>説明</th></tr></thead>
+        <tbody>
+          <tr><td><code>peripheral_fw/</code></td><td>Zephyrペリフェラルファームウェア (C) &mdash; nRF54L15 &amp; EFR32xG22E</td></tr>
+          <tr><td><code>peripheral_py/</code></td><td>ロールリバーサルテスト用Pythonペリフェラル (bless)</td></tr>
+          <tr><td><code>central_py/</code></td><td>Pythonセントラルクライアント (bleak) + 統合テスト</td></tr>
+          <tr><td><code>central_fw/</code></td><td>デバイス間通信用Zephyrセントラルファームウェア (C)</td></tr>
+          <tr><td><code>central_android/</code></td><td>Androidセントラルアプリ (Kotlin)、テストランナー付き</td></tr>
+          <tr><td><code>central_ios/</code></td><td>iOSセントラルアプリ (Swift)、テストランナー付き</td></tr>
+          <tr><td><code>central_flutter/</code></td><td>Flutterセントラルアプリ (Dart)、テストランナー付き</td></tr>
+          <tr><td><code>central_rn/</code></td><td>React Nativeセントラルアプリ (TypeScript)、テストランナー付き</td></tr>
+          <tr><td><code>proto/</code></td><td>Protocol Buffers定義（<code>blerpc.proto</code>）</td></tr>
+          <tr><td><code>tools/generate-handlers/</code></td><td>コードジェネレーター (Go) &mdash; 全言語のハンドラーとクライアントを生成</td></tr>
+          <tr><td><code>boards/</code></td><td>カスタムボード定義 (EFR32xG22E)</td></tr>
+          <tr><td><code>docs/</code></td><td>追加ドキュメント（ファームウェアガイド）</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>プロトコルライブラリ</h2>
+    <p>各言語向けに個別パッケージとして公開されている、プラットフォーム非依存のプロトコルエンコーディング/デコーディングライブラリです。</p>
+
+    <div class="grid">
+      <div class="card">
+        <h3><a href="https://github.com/tdaira/blerpc-protocol">blerpc-protocol</a></h3>
+        <p><span class="badge badge-blue">Python</span> <span class="badge badge-blue">C</span></p>
+        <p>コンテナの分割/再組み立て、コマンドのエンコーディング/デコーディング、E2E暗号化（鍵交換 + AES-128-GCM）。Pythonパッケージはpipでインストール可能です。C実装（<code>c/src/</code> + <code>c/include/</code>）は組み込み用</p>
+        <pre><code class="language-bash">pip install git+https://github.com/tdaira/blerpc-protocol.git</code></pre>
+      </div>
+
+      <div class="card">
+        <h3><a href="https://github.com/tdaira/blerpc-protocol-swift">blerpc-protocol-swift</a></h3>
+        <p><span class="badge badge-blue">Swift</span></p>
+        <p>iOSおよびmacOS向けSwift Package。Foundation と CryptoKit（Appleプラットフォームフレームワーク）を使用。iOS 16以上、macOS 13以上をサポート</p>
+        <pre><code class="language-swift">// Swift Package Manager
+.package(url: "https://github.com/tdaira/blerpc-protocol-swift", from: "0.5.0")</code></pre>
+      </div>
+
+      <div class="card">
+        <h3><a href="https://github.com/tdaira/blerpc-protocol-kt">blerpc-protocol-kt</a></h3>
+        <p><span class="badge badge-blue">Kotlin</span></p>
+        <p>Android向けKotlinライブラリ。GitHub Packages (Maven)で公開</p>
+        <pre><code class="language-kotlin">implementation("com.blerpc:blerpc-protocol-kt:0.5.0")</code></pre>
+      </div>
+
+      <div class="card">
+        <h3><a href="https://github.com/tdaira/blerpc-protocol-dart">blerpc-protocol-dart</a></h3>
+        <p><span class="badge badge-blue">Dart</span></p>
+        <p>Flutter向けPure Dartライブラリ。<a href="https://pub.dev/packages/blerpc_protocol">pub.dev</a>で公開。暗号化には<code>cryptography</code>パッケージを使用</p>
+        <pre><code class="language-yaml">blerpc_protocol: ^0.6.0</code></pre>
+      </div>
+
+      <div class="card">
+        <h3><a href="https://github.com/tdaira/blerpc-protocol-rn">blerpc-protocol-rn</a></h3>
+        <p><span class="badge badge-blue">TypeScript</span></p>
+        <p>React Native向けTypeScriptライブラリ。暗号化には<code>@noble/ciphers</code>、<code>@noble/curves</code>、<code>@noble/hashes</code>を使用（純粋なJS、ネイティブ依存なし）</p>
+        <pre><code class="language-json">"@blerpc/protocol-rn": "file:../blerpc-protocol-rn"</code></pre>
+      </div>
+    </div>
+
+    <h2>アーキテクチャ概要</h2>
+    <p>リポジトリ間の関係：</p>
+    <div class="diagram">
+<pre>
+                         bleRPC (monorepo)
+            +-----------------------------------------+
+            |                                         |
+            |  proto/blerpc.proto                     |
+            |       |                                 |
+            |       v                                 |
+            |  tools/generate-handlers (Go)           |
+            |       |                                 |
+            |       +---> peripheral_fw/src/             |
+            |       |     generated_handlers.{c,h}    |
+            |       |                                 |
+            |       +---> central_py/blerpc/generated/   |
+            |       |     generated_client.py         |
+            |       |                                 |
+            |       +---> central_android/.../         |
+            |       |     GeneratedClient.kt          |
+            |       |                                 |
+            |       +---> central_ios/.../             |
+            |       |     GeneratedClient.swift        |
+            |       |                                 |
+            |       +---> central_flutter/.../         |
+            |       |     generated_client.dart        |
+            |       |                                 |
+            |       +---> central_rn/.../              |
+            |       |     GeneratedClient.ts           |
+            |       |                                 |
+            |       +---> central_fw/src/              |
+            |             generated_client.{c,h}       |
+            |                                         |
+            +-----------------------------------------+
+                    |           |            |     |     |
+                    v           v            v     v     v
+           blerpc-protocol  blerpc-     blerpc- blerpc- blerpc-
+           (Python + C)     protocol-kt proto-  proto-  proto-
+                                        swift   dart    rn
+</pre>
+    </div>
+
+    <h2>CI / CD</h2>
+    <div class="card">
+      <p>各リポジトリにはGitHub Actions CIがあり、プッシュおよびプルリクエストのたびに実行されます：</p>
+      <table>
+        <thead><tr><th>リポジトリ</th><th>CIチェック</th></tr></thead>
+        <tbody>
+          <tr><td>blerpc</td><td>Pythonテスト + ruff lint、C lint (clang-format)、Go lint + build、iOSビルド、Androidビルド、Flutterビルド</td></tr>
+          <tr><td>blerpc-protocol</td><td>Pythonテスト + lint、C lint + テスト</td></tr>
+          <tr><td>blerpc-protocol-swift</td><td>swift build、swift test、SwiftLint</td></tr>
+          <tr><td>blerpc-protocol-kt</td><td>Gradle test、ktlint</td></tr>
+          <tr><td>blerpc-protocol-dart</td><td>dart analyze、dart test、pub.devへの自動公開</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>ライセンス</h2>
+    <p>すべてのbleRPCリポジトリは<a href="https://www.gnu.org/licenses/lgpl-3.0.html">GNU Lesser General Public License v3.0 (LGPL-3.0)</a>の静的リンク例外付きでライセンスされています。bleRPCライブラリに対して静的リンクする場合、再リンク可能なオブジェクトファイルの提供は不要です。詳細は各リポジトリの<code>LICENSING_EXCEPTION</code>ファイルを参照してください。</p>
+  </main>
+
+  <footer></footer>
+
+  <script src="../script.js"></script>
+</body>
+</html>

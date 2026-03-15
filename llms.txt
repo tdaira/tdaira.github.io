@@ -1,0 +1,18 @@
+# bleRPC
+
+> Type-safe, high-performance, secure RPC over Bluetooth Low Energy.
+
+bleRPC is an RPC framework that enables type-safe communication over Bluetooth Low Energy (BLE) using Protocol Buffers. It provides a layered protocol stack (Command, Encryption, Container) on top of BLE GATT, with optional end-to-end encryption (X25519 + AES-128-GCM). Define your API in `.proto` files and generate type-safe client/server code for iOS (Swift), Android (Kotlin), Flutter (Dart), React Native (TypeScript), Python, and Zephyr embedded (C).
+
+## Documentation
+
+- [Overview](https://blerpc.net/index.html): Architecture overview, protocol stack layers, supported platforms, and protocol library packages.
+- [Getting Started](https://blerpc.net/getting-started.html): Define `.proto` files, run code generation, and integrate bleRPC into iOS, Android, Flutter, React Native, Python, and Zephyr projects with full usage examples.
+- [Benchmarks](https://blerpc.net/benchmarks.html): Throughput and latency benchmarks across Python (30.3 KB/s), iOS (32.1 KB/s), and Android (59.0 KB/s) with encryption enabled.
+- [Protocol Specification](https://blerpc.net/protocol.html): Container layer format, command layer format, control containers, streaming, encrypted data format, and connection setup sequence.
+- [Encryption](https://blerpc.net/encryption.html): 4-step key exchange handshake (X25519 ECDH + Ed25519 signatures), HKDF-SHA256 key derivation, AES-128-GCM session encryption, replay protection, and TOFU trust model.
+- [Repositories](https://blerpc.net/repositories.html): Monorepo structure, protocol library packages for each language, CI/CD setup, and LGPL-3.0 licensing.
+
+## Optional
+
+- [Full documentation for LLMs](https://blerpc.net/llms-full.txt): Complete documentation in plain text

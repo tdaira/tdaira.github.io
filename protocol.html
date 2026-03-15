@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Protocol - bleRPC</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="alternate" hreflang="en" href="https://blerpc.net/protocol.html">
+  <link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/protocol.html">
+  <link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/protocol.html">
+  <link rel="alternate" hreflang="x-default" href="https://blerpc.net/protocol.html">
+</head>
+<body>
+  <header></header>
+
+  <main>
+    <h1>Protocol Specification</h1>
+    <p>bleRPC uses a layered protocol stack on top of BLE GATT. The <strong>Command Layer</strong> wraps Protocol Buffers payloads with RPC metadata, the optional <strong>Encryption Layer</strong> encrypts the serialized command, and the <strong>Container Layer</strong> fragments them into MTU-sized packets for BLE transmission.</p>
+
+    <div class="diagram">
+      <pre class="mermaid">
+graph TD
+    A["Application"] --> B["Command Layer&lt;br/&gt;Protobuf encode/decode + command metadata"]
+    B --> E["Encryption Layer (optional)&lt;br/&gt;AES-128-GCM encrypt/decrypt"]
+    E --> C["Container Layer&lt;br/&gt;MTU-based split/reassemble + sequencing"]
+    C --> D["BLE GATT&lt;br/&gt;(single characteristic)"]
+      </pre>
+    </div>
+
+    <h2>BLE Transport</h2>
+    <div class="card">
+      <p>All communication uses a <strong>single GATT Characteristic</strong>:</p>
+      <ul>
+        <li><strong>Requests</strong>: Central writes via <em>Write Without Response</em></li>
+        <li><strong>Responses</strong>: Peripheral sends via <em>Notify</em></li>
+      </ul>
+      <p>MTU is negotiated automatically via the BLE ATT MTU Exchange procedure. The application uses the negotiated MTU (minus 3 bytes ATT overhead) to determine the maximum container payload size.</p>
+      <p>Default timeout is <strong>100ms</strong>, configurable via the timeout control container.</p>
+    </div>
+
+    <h2>Container Layer</h2>
+    <p>The container layer splits large payloads into MTU-sized packets and reassembles them on the receiving side. Each container carries a transaction ID and sequence number for tracking and ordering.</p>
+
+    <h3>Container Format</h3>
+    <p>All multi-byte fields are <strong>little-endian</strong>.</p>
+
+    <h4>First Container (type=0b00)</h4>
+    <p>The first container in a transaction includes the total payload length:</p>
+    <div class="packet-format-wrapper">
+      <div class="packet-format">
+        <div class="packet-field" style="flex:8"><div class="packet-field-name">transaction_id</div><div class="packet-field-size">8 bits</div></div>
+        <div class="packet-field" style="flex:8"><div class="packet-field-name">sequence_number</div><div class="packet-field-size">8 bits</div></div>
+        <div class="packet-field" style="flex:2"><div class="packet-field-name">type</div><div class="packet-field-size">2</div></div>
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">ctrl_cmd</div><div class="packet-field-size">4</div></div>
+        <div class="packet-field" style="flex:2"><div class="packet-field-name">rsv</div><div class="packet-field-size">2</div></div>
+        <div class="packet-field" style="flex:16"><div class="packet-field-name">total_length</div><div class="packet-field-size">16 bits (LE)</div></div>
+        <div class="packet-field" style="flex:8"><div class="packet-field-name">payload_len</div><div class="packet-field-size">8 bits</div></div>
+        <div class="packet-field packet-field-var" style="flex:14"><div class="packet-field-name">payload</div><div class="packet-field-size">variable</div></div>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>Field</th><th>Bits</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>transaction_id</code></td><td>8</td><td>Unique ID for this request/response pair. Resets per transaction.</td></tr>
+        <tr><td><code>sequence_number</code></td><td>8</td><td>Increments with each container sent. Resets per transaction.</td></tr>
+        <tr><td><code>type</code></td><td>2</td><td><code>0b00</code> = first</td></tr>
+        <tr><td><code>control_cmd</code></td><td>4</td><td><code>0x0</code> (unused for data containers)</td></tr>
+        <tr><td><code>reserved</code></td><td>2</td><td>Zero-filled</td></tr>
+        <tr><td><code>total_length</code></td><td>16</td><td>Total payload size across all containers (bytes, little-endian)</td></tr>
+        <tr><td><code>payload_len</code></td><td>8</td><td>Payload size in this container (bytes)</td></tr>
+        <tr><td><code>payload</code></td><td>variable</td><td>Fragment of the command data</td></tr>
+      </tbody>
+    </table>
+    <p>Header size: <strong>6 bytes</strong> (transaction_id + sequence_number + flags + total_length + payload_len)</p>
+
+    <h4>Subsequent Container (type=0b01)</h4>
+    <p>Continuation containers omit <code>total_length</code>:</p>
+    <div class="packet-format-wrapper">
+      <div class="packet-format">
+        <div class="packet-field" style="flex:8"><div class="packet-field-name">transaction_id</div><div class="packet-field-size">8 bits</div></div>
+        <div class="packet-field" style="flex:8"><div class="packet-field-name">sequence_number</div><div class="packet-field-size">8 bits</div></div>
+        <div class="packet-field" style="flex:2"><div class="packet-field-name">type</div><div class="packet-field-size">2</div></div>
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">ctrl_cmd</div><div class="packet-field-size">4</div></div>
+        <div class="packet-field" style="flex:2"><div class="packet-field-name">rsv</div><div class="packet-field-size">2</div></div>
+        <div class="packet-field" style="flex:8"><div class="packet-field-name">payload_len</div><div class="packet-field-size">8 bits</div></div>
+        <div class="packet-field packet-field-var" style="flex:14"><div class="packet-field-name">payload</div><div class="packet-field-size">variable</div></div>
+      </div>
+    </div>
+    <p>Header size: <strong>4 bytes</strong> (no total_length field)</p>
+
+    <h4>Byte 2 Bitfield Detail</h4>
+    <p>The third byte of every container encodes the type, control command, and reserved bits:</p>
+    <div class="packet-format-wrapper">
+      <div class="packet-format" style="min-width:300px">
+        <div class="packet-field" style="flex:2"><div class="packet-field-name">type</div><div class="packet-field-size">bits 7-6</div></div>
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">control_cmd</div><div class="packet-field-size">bits 5-2</div></div>
+        <div class="packet-field" style="flex:2"><div class="packet-field-name">reserved</div><div class="packet-field-size">bits 1-0</div></div>
+      </div>
+    </div>
+    <ul>
+      <li><code>type</code>: <code>00</code> = first, <code>01</code> = subsequent, <code>11</code> = control</li>
+      <li><code>control_cmd</code>: <code>0x0</code>&ndash;<code>0x6</code> (only valid when type=<code>11</code>)</li>
+      <li><code>reserved</code>: zero-filled</li>
+    </ul>
+
+    <h3>Container Splitting Example</h3>
+    <p>A 500-byte command payload with MTU=247 (244 usable after ATT overhead):</p>
+    <div class="card">
+      <table>
+        <thead><tr><th>Container</th><th>Type</th><th>Header</th><th>Payload</th><th>Total</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>FIRST</td><td>6 bytes</td><td>238 bytes</td><td>244 bytes</td></tr>
+          <tr><td>2</td><td>SUBSEQUENT</td><td>4 bytes</td><td>240 bytes</td><td>244 bytes</td></tr>
+          <tr><td>3</td><td>SUBSEQUENT</td><td>4 bytes</td><td>22 bytes</td><td>26 bytes</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-bottom:0">Total payload: <strong>500 bytes</strong> (238 + 240 + 22)</p>
+    </div>
+
+    <h3>Maximum Payload</h3>
+    <p>The <code>sequence_number</code> is 8 bits, limiting a single transaction to ~255 containers. With a typical MTU of 247 (240 bytes per subsequent container), the practical maximum payload per transaction is approximately <strong>60 KB</strong>. For larger transfers, use multiple request/response cycles.</p>
+
+    <h2>Control Containers</h2>
+    <p>Control containers (<code>type=0b11</code>) carry protocol-level commands instead of application data.</p>
+
+    <h3>Timeout Sharing (control_cmd=0x1)</h3>
+    <p>Allows the peripheral to communicate its processing timeout to the central.</p>
+    <div class="card">
+      <h3>Request (Central &rarr; Peripheral)</h3>
+      <table>
+        <thead><tr><th>Field</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>type</td><td><code>0b11</code> (control)</td></tr>
+          <tr><td>control_cmd</td><td><code>0x1</code></td></tr>
+          <tr><td>payload_len</td><td><code>0x00</code></td></tr>
+        </tbody>
+      </table>
+      <h3>Response (Peripheral &rarr; Central)</h3>
+      <table>
+        <thead><tr><th>Field</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>type</td><td><code>0b11</code> (control)</td></tr>
+          <tr><td>control_cmd</td><td><code>0x1</code></td></tr>
+          <tr><td>payload_len</td><td><code>0x02</code></td></tr>
+          <tr><td>payload</td><td><code>timeout_ms</code> (16-bit LE, milliseconds)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Capability Sharing (control_cmd=0x4)</h3>
+    <p>Allows the peripheral to communicate its buffer constraints and feature flags to the central.</p>
+    <div class="card">
+      <h3>Request (Central &rarr; Peripheral)</h3>
+      <table>
+        <thead><tr><th>Field</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>type</td><td><code>0b11</code> (control)</td></tr>
+          <tr><td>control_cmd</td><td><code>0x4</code></td></tr>
+          <tr><td>payload_len</td><td><code>0x06</code></td></tr>
+          <tr><td>payload[0:2]</td><td><code>max_request_payload_size</code> (16-bit LE, typically 0)</td></tr>
+          <tr><td>payload[2:4]</td><td><code>max_response_payload_size</code> (16-bit LE, typically 0)</td></tr>
+          <tr><td>payload[4:6]</td><td><code>flags</code> (16-bit LE, typically 0)</td></tr>
+        </tbody>
+      </table>
+      <h3>Response (Peripheral &rarr; Central)</h3>
+      <table>
+        <thead><tr><th>Field</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>type</td><td><code>0b11</code> (control)</td></tr>
+          <tr><td>control_cmd</td><td><code>0x4</code></td></tr>
+          <tr><td>payload_len</td><td><code>0x06</code></td></tr>
+          <tr><td>payload[0:2]</td><td><code>max_request_payload_size</code> (16-bit LE)</td></tr>
+          <tr><td>payload[2:4]</td><td><code>max_response_payload_size</code> (16-bit LE)</td></tr>
+          <tr><td>payload[4:6]</td><td><code>flags</code> (16-bit LE) &mdash; bit 0: encryption supported</td></tr>
+        </tbody>
+      </table>
+      <p>When <code>flags</code> is absent (4-byte payload for backward compatibility), no optional features are available.</p>
+    </div>
+
+    <h3>Stream End (control_cmd=0x2, 0x3)</h3>
+    <p>Signals the end of a streaming sequence. Either side can terminate a stream.</p>
+    <div class="card">
+      <table>
+        <thead><tr><th>control_cmd</th><th>Direction</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>0x2</code></td><td>Central &rarr; Peripheral</td><td>Central ends the upload stream</td></tr>
+          <tr><td><code>0x3</code></td><td>Peripheral &rarr; Central</td><td>Peripheral ends the download stream</td></tr>
+        </tbody>
+      </table>
+      <p>Both have <code>payload_len=0x00</code> (no payload).</p>
+    </div>
+
+    <h3>Error Notification (control_cmd=0x5)</h3>
+    <p>Sent by the peripheral when an error occurs (e.g., response exceeds buffer limits).</p>
+    <div class="card">
+      <table>
+        <thead><tr><th>Field</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>type</td><td><code>0b11</code> (control)</td></tr>
+          <tr><td>control_cmd</td><td><code>0x5</code></td></tr>
+          <tr><td>payload_len</td><td><code>0x01</code></td></tr>
+          <tr><td>payload[0]</td><td>Error code</td></tr>
+        </tbody>
+      </table>
+      <p>Error codes:</p>
+      <ul>
+        <li><code>0x01</code> &mdash; <strong>RESPONSE_TOO_LARGE</strong>: Response payload exceeds <code>max_response_payload_size</code></li>
+      </ul>
+    </div>
+
+    <h3>Key Exchange (control_cmd=0x6)</h3>
+    <p>Carries <a href="encryption.html">key exchange handshake</a> payloads for establishing an encrypted session. Used when the peripheral advertises encryption support via the capabilities <code>flags</code> field.</p>
+    <div class="card">
+      <table>
+        <thead><tr><th>Field</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>type</td><td><code>0b11</code> (control)</td></tr>
+          <tr><td>control_cmd</td><td><code>0x6</code></td></tr>
+          <tr><td>payload_len</td><td>variable</td></tr>
+          <tr><td>payload</td><td>Key exchange step data (see <a href="encryption.html">Encryption</a>)</td></tr>
+        </tbody>
+      </table>
+      <p>Four containers are exchanged (Step 1&ndash;4) to complete the handshake. After completion, all subsequent data containers carry encrypted payloads.</p>
+    </div>
+
+    <h3>Encrypted Data Container</h3>
+    <p>When encryption is active, the payload of data containers (FIRST / SUBSEQUENT) is replaced by the encrypted form of the serialized command:</p>
+    <div class="packet-format-wrapper">
+      <div class="packet-format">
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">counter</div><div class="packet-field-size">32 bits (LE)</div></div>
+        <div class="packet-field packet-field-var" style="flex:10"><div class="packet-field-name">ciphertext</div><div class="packet-field-size">variable</div></div>
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">tag</div><div class="packet-field-size">128 bits</div></div>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>Field</th><th>Size</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>counter</code></td><td>4 bytes</td><td>Monotonically increasing counter (little-endian). Used as AES-GCM nonce and for replay detection.</td></tr>
+        <tr><td><code>ciphertext</code></td><td>N bytes</td><td>AES-128-GCM encrypted serialized command</td></tr>
+        <tr><td><code>tag</code></td><td>16 bytes</td><td>AES-GCM authentication tag</td></tr>
+      </tbody>
+    </table>
+    <p>Total overhead: <strong>20 bytes</strong> (4 counter + 16 tag). The ciphertext is then split into containers as usual.</p>
+
+    <h2>Command Layer</h2>
+    <p>The command layer wraps Protocol Buffers-encoded data with RPC metadata. Commands are identified by name (ASCII string), enabling flexible, human-readable dispatch.</p>
+
+    <h3>Command Format</h3>
+    <div class="packet-format-wrapper">
+      <div class="packet-format">
+        <div class="packet-field" style="flex:1"><div class="packet-field-name">T</div><div class="packet-field-size">1 bit</div></div>
+        <div class="packet-field" style="flex:7"><div class="packet-field-name">reserved</div><div class="packet-field-size">7 bits</div></div>
+        <div class="packet-field" style="flex:8"><div class="packet-field-name">cmd_name_len</div><div class="packet-field-size">8 bits</div></div>
+        <div class="packet-field" style="flex:16"><div class="packet-field-name">cmd_name</div><div class="packet-field-size">variable</div></div>
+        <div class="packet-field" style="flex:16"><div class="packet-field-name">data_len</div><div class="packet-field-size">16 bits (LE)</div></div>
+        <div class="packet-field packet-field-var" style="flex:16"><div class="packet-field-name">data</div><div class="packet-field-size">variable</div></div>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>Field</th><th>Bits</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>type</code></td><td>1</td><td><code>0</code> = request, <code>1</code> = response</td></tr>
+        <tr><td><code>reserved</code></td><td>7</td><td>Zero-filled</td></tr>
+        <tr><td><code>cmd_name_len</code></td><td>8</td><td>Length of the command name in bytes</td></tr>
+        <tr><td><code>cmd_name</code></td><td>variable</td><td>ASCII command name (e.g., <code>echo</code>, <code>flash_read</code>)</td></tr>
+        <tr><td><code>data_len</code></td><td>16</td><td>Length of the protobuf data (bytes, little-endian)</td></tr>
+        <tr><td><code>data</code></td><td>variable</td><td>Protocol Buffers encoded payload</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Command Discovery</h3>
+    <p>Commands are automatically generated from <code>.proto</code> file definitions. Matching <code>*Request</code> / <code>*Response</code> message pairs produce a command whose name is the prefix converted to <code>snake_case</code>:</p>
+    <table>
+      <thead><tr><th>Message Pair</th><th>Command Name</th></tr></thead>
+      <tbody>
+        <tr><td><code>EchoRequest</code> + <code>EchoResponse</code></td><td><code>echo</code></td></tr>
+        <tr><td><code>FlashReadRequest</code> + <code>FlashReadResponse</code></td><td><code>flash_read</code></td></tr>
+        <tr><td><code>DataWriteRequest</code> + <code>DataWriteResponse</code></td><td><code>data_write</code></td></tr>
+      </tbody>
+    </table>
+
+    <h2>Request/Response Flow</h2>
+    <p>A complete RPC call involves encoding at the command layer, splitting at the container layer, BLE transmission, and the reverse on the receiving side:</p>
+
+    <div class="diagram">
+      <pre class="mermaid">
+sequenceDiagram
+    participant C as Central
+    participant P as Peripheral
+    Note over C: 1. Protobuf encode request
+    Note over C: 2. Wrap in command header
+    Note over C: 3. Split into containers
+    C->>P: Write Without Response (FIRST)
+    C->>P: Write Without Response (SUBSEQUENT...)
+    Note over P: 4. Reassemble containers
+    Note over P: 5. Decode command + Protobuf
+    Note over P: 6. Execute handler
+    Note over P: 7. Encode response + split
+    P->>C: Notify (FIRST)
+    P->>C: Notify (SUBSEQUENT...)
+    Note over C: 8. Reassemble + decode response
+      </pre>
+    </div>
+
+    <h2>Streaming</h2>
+    <p>bleRPC supports two streaming patterns beyond simple request/response:</p>
+
+    <h3>Peripheral &rarr; Central Stream (Server Streaming)</h3>
+    <p>One request triggers multiple responses. The stream ends with a <code>STREAM_END_P2C</code> control container.</p>
+    <div class="diagram">
+      <pre class="mermaid">
+sequenceDiagram
+    participant C as Central
+    participant P as Peripheral
+    C->>P: Request
+    P->>C: Response 1 (Notify)
+    P->>C: Response 2 (Notify)
+    P->>C: Response 3 (Notify)
+    P-->>C: STREAM_END_P2C (control)
+      </pre>
+    </div>
+
+    <h3>Central &rarr; Peripheral Stream (Client Streaming)</h3>
+    <p>Multiple requests are sent, followed by a <code>STREAM_END_C2P</code> control container. The peripheral responds with a final message.</p>
+    <div class="diagram">
+      <pre class="mermaid">
+sequenceDiagram
+    participant C as Central
+    participant P as Peripheral
+    C->>P: Request 1
+    C->>P: Request 2
+    C->>P: Request 3
+    C-->>P: STREAM_END_C2P (control)
+    P->>C: Final Response (Notify)
+      </pre>
+    </div>
+
+    <h2>Connection Setup Sequence</h2>
+    <p>When a central connects to a peripheral, it performs these initialization steps:</p>
+    <div class="diagram">
+      <pre class="mermaid">
+sequenceDiagram
+    participant C as Central
+    participant P as Peripheral
+    C->>P: BLE Connect
+    C->>P: MTU Exchange
+    C->>P: Discover Services
+    C->>P: Enable Notifications
+    C->>P: Timeout Request (ctrl)
+    P->>C: Timeout Response (e.g. 100ms)
+    C->>P: Capability Request (ctrl)
+    P->>C: Capability Response (max_req, max_resp, flags)
+    opt Encryption (flags &amp; 0x01)
+        C->>P: Key Exchange Step 1 (ctrl 0x6)
+        P->>C: Key Exchange Step 2 (ctrl 0x6)
+        C->>P: Key Exchange Step 3 (ctrl 0x6)
+        P->>C: Key Exchange Step 4 (ctrl 0x6)
+        Note over C,P: AES-128-GCM session established
+    end
+    Note over C,P: Ready for RPC calls
+      </pre>
+    </div>
+  </main>
+
+  <footer></footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
