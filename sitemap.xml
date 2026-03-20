@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://blerpc.net/index.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://blerpc.net/index.html"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/index.html"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/index.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://blerpc.net/index.html"/>
+  </url>
+  <url>
+    <loc>https://blerpc.net/getting-started.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://blerpc.net/getting-started.html"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/getting-started.html"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/getting-started.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://blerpc.net/getting-started.html"/>
+  </url>
+  <url>
+    <loc>https://blerpc.net/benchmarks.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://blerpc.net/benchmarks.html"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/benchmarks.html"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/benchmarks.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://blerpc.net/benchmarks.html"/>
+  </url>
+  <url>
+    <loc>https://blerpc.net/protocol.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://blerpc.net/protocol.html"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/protocol.html"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/protocol.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://blerpc.net/protocol.html"/>
+  </url>
+  <url>
+    <loc>https://blerpc.net/encryption.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://blerpc.net/encryption.html"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/encryption.html"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/encryption.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://blerpc.net/encryption.html"/>
+  </url>
+  <url>
+    <loc>https://blerpc.net/repositories.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://blerpc.net/repositories.html"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/repositories.html"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/repositories.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://blerpc.net/repositories.html"/>
+  </url>
+  <url>
+    <loc>https://blerpc.net/ja/index.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://blerpc.net/index.html"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/index.html"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/index.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://blerpc.net/index.html"/>
+  </url>
+  <url>
+    <loc>https://blerpc.net/ja/getting-started.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://blerpc.net/getting-started.html"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/getting-started.html"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/getting-started.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://blerpc.net/getting-started.html"/>
+  </url>
+  <url>
+    <loc>https://blerpc.net/ja/benchmarks.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://blerpc.net/benchmarks.html"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/benchmarks.html"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/benchmarks.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://blerpc.net/benchmarks.html"/>
+  </url>
+  <url>
+    <loc>https://blerpc.net/ja/protocol.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://blerpc.net/protocol.html"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/protocol.html"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/protocol.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://blerpc.net/protocol.html"/>
+  </url>
+  <url>
+    <loc>https://blerpc.net/ja/encryption.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://blerpc.net/encryption.html"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/encryption.html"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/encryption.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://blerpc.net/encryption.html"/>
+  </url>
+  <url>
+    <loc>https://blerpc.net/ja/repositories.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://blerpc.net/repositories.html"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/repositories.html"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/repositories.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://blerpc.net/repositories.html"/>
+  </url>
+  <url>
+    <loc>https://blerpc.net/zh/index.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://blerpc.net/index.html"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/index.html"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/index.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://blerpc.net/index.html"/>
+  </url>
+  <url>
+    <loc>https://blerpc.net/zh/getting-started.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://blerpc.net/getting-started.html"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/getting-started.html"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/getting-started.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://blerpc.net/getting-started.html"/>
+  </url>
+  <url>
+    <loc>https://blerpc.net/zh/benchmarks.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://blerpc.net/benchmarks.html"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/benchmarks.html"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/benchmarks.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://blerpc.net/benchmarks.html"/>
+  </url>
+  <url>
+    <loc>https://blerpc.net/zh/protocol.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://blerpc.net/protocol.html"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/protocol.html"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/protocol.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://blerpc.net/protocol.html"/>
+  </url>
+  <url>
+    <loc>https://blerpc.net/zh/encryption.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://blerpc.net/encryption.html"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/encryption.html"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/encryption.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://blerpc.net/encryption.html"/>
+  </url>
+  <url>
+    <loc>https://blerpc.net/zh/repositories.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://blerpc.net/repositories.html"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/repositories.html"/>
+    <xhtml:link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/repositories.html"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://blerpc.net/repositories.html"/>
+  </url>
+</urlset>
