@@ -19,22 +19,24 @@
     <h1>协议规范</h1>
     <p>bleRPC 在 BLE GATT 之上使用分层协议栈。<strong>命令层</strong>使用 RPC 元数据包装 Protocol Buffers 载荷，可选的<strong>加密层</strong>加密序列化的命令，<strong>容器层</strong>将它们分片为 MTU 大小的数据包进行 BLE 传输。</p>
 
-    <div class="diagram">
-      <pre class="mermaid">
-graph TD
-    A["Application"] --> B["Command Layer&lt;br/&gt;Protobuf encode/decode + command metadata"]
-    B --> E["Encryption Layer (optional)&lt;br/&gt;AES-128-GCM encrypt/decrypt"]
-    E --> C["Container Layer&lt;br/&gt;MTU-based split/reassemble + sequencing"]
-    C --> D["BLE GATT&lt;br/&gt;(single characteristic)"]
-      </pre>
+    <div class="flowchart">
+      <script type="application/json">
+{"steps":[
+{"title":"Application"},
+{"title":"Command Layer","desc":"Protobuf encode/decode + command metadata"},
+{"title":"Encryption Layer","desc":"AES-128-GCM encrypt/decrypt","tag":"optional"},
+{"title":"Container Layer","desc":"MTU-based split/reassemble + sequencing"},
+{"title":"BLE GATT","desc":"(single characteristic)"}
+]}
+      </script>
     </div>
 
     <h2>BLE 传输</h2>
     <div class="card">
       <p>所有通信使用<strong>单个 GATT Characteristic</strong>：</p>
       <ul>
-        <li><strong>请求</strong>：Central 通过 <em>Write Without Response</em> 写入</li>
-        <li><strong>响应</strong>：Peripheral 通过 <em>Notify</em> 发送</li>
+        <li><strong>请求</strong>：Central 通过 Write Without Response 写入</li>
+        <li><strong>响应</strong>：Peripheral 通过 Notify 发送</li>
       </ul>
       <p>MTU 通过 BLE ATT MTU Exchange 过程自动协商。应用程序使用协商后的 MTU（减去 3 字节 ATT 开销）来确定最大容器载荷大小</p>
       <p>默认超时为 <strong>100ms</strong>，可通过超时控制容器配置</p>
@@ -107,7 +109,6 @@ graph TD
 
     <h3>容器分割示例</h3>
     <p>500 字节命令载荷，MTU=247（ATT 开销后可用 244 字节）：</p>
-    <div class="card">
       <table>
         <thead><tr><th>容器</th><th>类型</th><th>头部</th><th>载荷</th><th>总计</th></tr></thead>
         <tbody>
@@ -117,7 +118,6 @@ graph TD
         </tbody>
       </table>
       <p style="margin-bottom:0">总载荷：<strong>500 字节</strong>（238 + 240 + 22）</p>
-    </div>
 
     <h3>最大载荷</h3>
     <p><code>sequence_number</code> 为 8 位，将单个事务限制为约 255 个容器。在典型 MTU 为 247（每个后续容器 240 字节）的情况下，每个事务的实际最大载荷约为 <strong>60 KB</strong>。对于更大的传输，请使用多次请求/响应循环。</p>
@@ -127,7 +127,6 @@ graph TD
 
     <h3>超时共享 (control_cmd=0x1)</h3>
     <p>允许 peripheral 向 central 通告其处理超时时间。</p>
-    <div class="card">
       <h3>请求（Central &rarr; Peripheral）</h3>
       <table>
         <thead><tr><th>字段</th><th>值</th></tr></thead>
@@ -147,11 +146,9 @@ graph TD
           <tr><td>payload</td><td><code>timeout_ms</code>（16 位小端序，毫秒）</td></tr>
         </tbody>
       </table>
-    </div>
 
     <h3>能力共享 (control_cmd=0x4)</h3>
     <p>允许 peripheral 向 central 通告其缓冲区约束和功能标志。</p>
-    <div class="card">
       <h3>请求（Central &rarr; Peripheral）</h3>
       <table>
         <thead><tr><th>字段</th><th>值</th></tr></thead>
@@ -177,11 +174,9 @@ graph TD
         </tbody>
       </table>
       <p>当 <code>flags</code> 不存在时（4 字节载荷，用于向后兼容），没有可选功能可用</p>
-    </div>
 
     <h3>流结束 (control_cmd=0x2, 0x3)</h3>
     <p>表示流式序列结束。任一端都可以终止流。</p>
-    <div class="card">
       <table>
         <thead><tr><th>control_cmd</th><th>方向</th><th>描述</th></tr></thead>
         <tbody>
@@ -190,11 +185,9 @@ graph TD
         </tbody>
       </table>
       <p>两者均为 <code>payload_len=0x00</code>（无载荷）</p>
-    </div>
 
     <h3>错误通知 (control_cmd=0x5)</h3>
     <p>当发生错误时（例如响应超过缓冲区限制）由 peripheral 发送。</p>
-    <div class="card">
       <table>
         <thead><tr><th>字段</th><th>值</th></tr></thead>
         <tbody>
@@ -208,11 +201,9 @@ graph TD
       <ul>
         <li><code>0x01</code> &mdash; <strong>RESPONSE_TOO_LARGE</strong>：响应载荷超过 <code>max_response_payload_size</code></li>
       </ul>
-    </div>
 
     <h3>密钥交换 (control_cmd=0x6)</h3>
     <p>携带<a href="encryption.html">密钥交换握手</a>载荷，用于建立加密会话。当 peripheral 通过能力 <code>flags</code> 字段广播加密支持时使用。</p>
-    <div class="card">
       <table>
         <thead><tr><th>字段</th><th>值</th></tr></thead>
         <tbody>
@@ -223,7 +214,6 @@ graph TD
         </tbody>
       </table>
       <p>交换 4 个容器（步骤 1&ndash;4）完成握手。完成后，所有后续数据容器携带加密载荷</p>
-    </div>
 
     <h3>加密数据容器</h3>
     <p>当加密启用时，数据容器（FIRST / SUBSEQUENT）的载荷替换为序列化命令的加密形式：</p>
@@ -284,24 +274,23 @@ graph TD
     <h2>请求/响应流程</h2>
     <p>完整的 RPC 调用涉及命令层编码、容器层分割、BLE 传输，以及接收端的反向操作：</p>
 
-    <div class="diagram">
-      <pre class="mermaid">
-sequenceDiagram
-    participant C as Central
-    participant P as Peripheral
-    Note over C: 1. Protobuf encode request
-    Note over C: 2. Wrap in command header
-    Note over C: 3. Split into containers
-    C->>P: Write Without Response (FIRST)
-    C->>P: Write Without Response (SUBSEQUENT...)
-    Note over P: 4. Reassemble containers
-    Note over P: 5. Decode command + Protobuf
-    Note over P: 6. Execute handler
-    Note over P: 7. Encode response + split
-    P->>C: Notify (FIRST)
-    P->>C: Notify (SUBSEQUENT...)
-    Note over C: 8. Reassemble + decode response
-      </pre>
+    <div class="seqdiag">
+      <script type="application/json">
+{"minWidth":520,"actors":["Central","Peripheral"],"messages":[
+{"self":"Central","label":"1. Protobuf encode request"},
+{"self":"Central","label":"2. Wrap in command header"},
+{"self":"Central","label":"3. Split into containers"},
+{"from":"Central","to":"Peripheral","label":"Write Without Response (FIRST)","accent":true},
+{"from":"Central","to":"Peripheral","label":"Write Without Response (SUBSEQUENT...)","accent":true},
+{"self":"Peripheral","label":"4. Reassemble containers"},
+{"self":"Peripheral","label":"5. Decode command + Protobuf"},
+{"self":"Peripheral","label":"6. Execute handler"},
+{"self":"Peripheral","label":"7. Encode response + split"},
+{"from":"Peripheral","to":"Central","label":"Notify (FIRST)","dashed":true,"accent":true},
+{"from":"Peripheral","to":"Central","label":"Notify (SUBSEQUENT...)","dashed":true,"accent":true},
+{"self":"Central","label":"8. Reassemble + decode response"}
+]}
+      </script>
     </div>
 
     <h2>流式传输</h2>
@@ -309,58 +298,54 @@ sequenceDiagram
 
     <h3>Peripheral &rarr; Central 流（服务端流式）</h3>
     <p>一个请求触发多个响应。流以 <code>STREAM_END_P2C</code> 控制容器结束。</p>
-    <div class="diagram">
-      <pre class="mermaid">
-sequenceDiagram
-    participant C as Central
-    participant P as Peripheral
-    C->>P: Request
-    P->>C: Response 1 (Notify)
-    P->>C: Response 2 (Notify)
-    P->>C: Response 3 (Notify)
-    P-->>C: STREAM_END_P2C (control)
-      </pre>
+    <div class="seqdiag">
+      <script type="application/json">
+{"minWidth":420,"actors":["Central","Peripheral"],"messages":[
+{"from":"Central","to":"Peripheral","label":"Request","accent":true},
+{"from":"Peripheral","to":"Central","label":"Response 1 (Notify)","dashed":true},
+{"from":"Peripheral","to":"Central","label":"Response 2 (Notify)","dashed":true},
+{"from":"Peripheral","to":"Central","label":"Response 3 (Notify)","dashed":true},
+{"from":"Peripheral","to":"Central","label":"STREAM_END_P2C (control)","dashed":true,"accent":true}
+]}
+      </script>
     </div>
 
     <h3>Central &rarr; Peripheral 流（客户端流式）</h3>
     <p>发送多个请求，然后发送 <code>STREAM_END_C2P</code> 控制容器。Peripheral 返回最终消息。</p>
-    <div class="diagram">
-      <pre class="mermaid">
-sequenceDiagram
-    participant C as Central
-    participant P as Peripheral
-    C->>P: Request 1
-    C->>P: Request 2
-    C->>P: Request 3
-    C-->>P: STREAM_END_C2P (control)
-    P->>C: Final Response (Notify)
-      </pre>
+    <div class="seqdiag">
+      <script type="application/json">
+{"minWidth":420,"actors":["Central","Peripheral"],"messages":[
+{"from":"Central","to":"Peripheral","label":"Request 1","accent":true},
+{"from":"Central","to":"Peripheral","label":"Request 2","accent":true},
+{"from":"Central","to":"Peripheral","label":"Request 3","accent":true},
+{"from":"Central","to":"Peripheral","label":"STREAM_END_C2P (control)","dashed":true,"accent":true},
+{"from":"Peripheral","to":"Central","label":"Final Response (Notify)","dashed":true}
+]}
+      </script>
     </div>
 
     <h2>连接建立序列</h2>
     <p>当 central 连接到 peripheral 时，会执行以下初始化步骤：</p>
-    <div class="diagram">
-      <pre class="mermaid">
-sequenceDiagram
-    participant C as Central
-    participant P as Peripheral
-    C->>P: BLE Connect
-    C->>P: MTU Exchange
-    C->>P: Discover Services
-    C->>P: Enable Notifications
-    C->>P: Timeout Request (ctrl)
-    P->>C: Timeout Response (e.g. 100ms)
-    C->>P: Capability Request (ctrl)
-    P->>C: Capability Response (max_req, max_resp, flags)
-    opt Encryption (flags &amp; 0x01)
-        C->>P: Key Exchange Step 1 (ctrl 0x6)
-        P->>C: Key Exchange Step 2 (ctrl 0x6)
-        C->>P: Key Exchange Step 3 (ctrl 0x6)
-        P->>C: Key Exchange Step 4 (ctrl 0x6)
-        Note over C,P: AES-128-GCM session established
-    end
-    Note over C,P: Ready for RPC calls
-      </pre>
+    <div class="seqdiag">
+      <script type="application/json">
+{"minWidth":640,"actors":["Central","Peripheral"],"messages":[
+{"from":"Central","to":"Peripheral","label":"BLE Connect","accent":true},
+{"from":"Central","to":"Peripheral","label":"MTU Exchange","accent":true},
+{"from":"Central","to":"Peripheral","label":"Discover Services","accent":true},
+{"from":"Central","to":"Peripheral","label":"Enable Notifications","accent":true},
+{"from":"Central","to":"Peripheral","label":"Timeout Request (ctrl)","accent":true},
+{"from":"Peripheral","to":"Central","label":"Timeout Response (e.g. 100ms)","dashed":true},
+{"from":"Central","to":"Peripheral","label":"Capability Request (ctrl)","accent":true},
+{"from":"Peripheral","to":"Central","label":"Capability Response (max_req, max_resp, flags)","dashed":true},
+{"note":"Optional — when encryption is enabled (flags & 0x01)"},
+{"from":"Central","to":"Peripheral","label":"Key Exchange Step 1 (ctrl 0x6)","accent":true},
+{"from":"Peripheral","to":"Central","label":"Key Exchange Step 2 (ctrl 0x6)","dashed":true},
+{"from":"Central","to":"Peripheral","label":"Key Exchange Step 3 (ctrl 0x6)","accent":true},
+{"from":"Peripheral","to":"Central","label":"Key Exchange Step 4 (ctrl 0x6)","dashed":true},
+{"note":"AES-128-GCM session established"},
+{"note":"Ready for RPC calls"}
+]}
+      </script>
     </div>
   </main>
 

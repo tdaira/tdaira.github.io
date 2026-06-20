@@ -173,14 +173,20 @@ function initFooter() {
   footer.innerHTML = '<p>' + t.footer + '</p>';
 }
 
+// Normalize a URL/href to a page key (home -> "index")
+function navPageKey(p) {
+  var seg = p.replace(/\.html$/, "").replace(/\/+$/, "").split("/").pop();
+  if (!seg || seg === "." || seg === "ja" || seg === "zh" || seg === "index") return "index";
+  return seg;
+}
+
 // Set active nav link
 function setActiveNav() {
-  var path = window.location.pathname.replace(/\/$/, "").split("/").pop() || "index";
-  document.querySelectorAll("nav a").forEach(function(a) {
+  var path = navPageKey(window.location.pathname);
+  document.querySelectorAll("nav > a").forEach(function(a) {
     var href = a.getAttribute("href");
     if (!href || href.startsWith("http")) return;
-    var hrefPage = href.replace(/\.html$/, "").replace(/\/$/, "").split("/").pop() || "index";
-    if (hrefPage === path || (path === "index" && (hrefPage === "." || hrefPage === ""))) {
+    if (navPageKey(href) === path) {
       a.classList.add("active");
     }
   });
@@ -192,6 +198,105 @@ function initLogo() {
   if (hero) {
     hero.innerHTML = '<span class="logo-ble">ble</span>RPC';
   }
+}
+
+// Codegen showcase: language tab switcher (index hero only; no-op elsewhere)
+function initCodegen() {
+  var tabs = document.querySelectorAll(".codegen-tab");
+  if (!tabs.length) return;
+  tabs.forEach(function(tab) {
+    tab.addEventListener("click", function() {
+      var lang = tab.getAttribute("data-lang");
+      document.querySelectorAll(".codegen-tab").forEach(function(t) {
+        t.classList.toggle("active", t === tab);
+      });
+      document.querySelectorAll(".codegen-panel").forEach(function(p) {
+        p.classList.toggle("active", p.getAttribute("data-lang") === lang);
+      });
+    });
+  });
+}
+
+// Sequence diagrams (design system component, rendered from JSON)
+function escHtml(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function renderSeqDiagram(el, spec) {
+  var actors = spec.actors || [], messages = spec.messages || [];
+  var n = Math.max(1, actors.length), rh = spec.rowHeight || 56;
+  function idx(a) { return typeof a === "number" ? a : actors.indexOf(a); }
+  var html = '<div class="seqdiag-inner" style="min-width:' + (spec.minWidth || n * 150) + 'px">';
+  html += '<div class="seqdiag-actors">';
+  actors.forEach(function(a) {
+    html += '<div class="seqdiag-actor-cell"><div class="seqdiag-actor">' + escHtml(a) + '</div></div>';
+  });
+  html += '</div>';
+  html += '<div class="seqdiag-body" style="height:' + (messages.length * rh) + 'px">';
+  for (var i = 0; i < n; i++) {
+    var lx = ((i + 0.5) / n) * 100;
+    html += '<div class="seqdiag-life" style="left:' + lx + '%;transform:translateX(-50%)"></div>';
+  }
+  messages.forEach(function(m, r) {
+    var yMid = r * rh + rh / 2;
+    if (m.note) {
+      html += '<div class="seqdiag-note" style="top:' + (yMid - 14) + 'px;left:8%;right:8%"><span>' + escHtml(m.note) + '</span></div>';
+      return;
+    }
+    var from = idx(m.self != null ? m.self : m.from);
+    var to = idx(m.self != null ? m.self : m.to);
+    if (m.self != null || from === to) {
+      var sx = ((from + 0.5) / n) * 100;
+      html += '<div class="seqdiag-self" style="top:' + (yMid - 15) + 'px;left:' + sx + '%;width:46%;transform:translateX(-50%)"><span>↻ ' + escHtml(m.label) + '</span></div>';
+      return;
+    }
+    var f = (from + 0.5) / n, t = (to + 0.5) / n;
+    var leftPct = Math.min(f, t) * 100, widthPct = Math.abs(t - f) * 100, toRight = t > f;
+    var color = m.accent ? "var(--accent)" : "var(--text-secondary)";
+    var borderStyle = m.dashed ? "dashed" : "solid";
+    html += '<div class="seqdiag-msg-label" style="top:' + (yMid - rh / 2 + 6) + 'px;left:' + leftPct + '%;width:' + widthPct + '%"><span>' + escHtml(m.label) + '</span></div>';
+    html += '<div class="seqdiag-line" style="top:' + yMid + 'px;left:' + leftPct + '%;width:' + widthPct + '%;border-top:1.5px ' + borderStyle + ' ' + color + '"></div>';
+    var ahLeft = toRight ? "calc(" + (leftPct + widthPct) + "% - 7px)" : leftPct + "%";
+    var ah = "border-top:4px solid transparent;border-bottom:4px solid transparent;" +
+      (toRight ? "border-left:7px solid " + color : "border-right:7px solid " + color);
+    html += '<div class="seqdiag-arrow" style="top:' + (yMid - 4) + 'px;left:' + ahLeft + ';' + ah + '"></div>';
+  });
+  html += '</div></div>';
+  el.innerHTML = html;
+}
+function initSequenceDiagrams() {
+  document.querySelectorAll(".seqdiag").forEach(function(el) {
+    var dataEl = el.querySelector('script[type="application/json"]');
+    if (!dataEl) return;
+    try {
+      renderSeqDiagram(el, JSON.parse(dataEl.textContent));
+    } catch (e) { /* leave as-is on parse error */ }
+  });
+}
+
+// Flow charts (design system component, rendered from JSON)
+function initFlowCharts() {
+  var DOWN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v15M6 13l6 6 6-6"/></svg>';
+  var RIGHT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h15M13 6l6 6-6 6"/></svg>';
+  document.querySelectorAll(".flowchart").forEach(function(el) {
+    var dataEl = el.querySelector('script[type="application/json"]');
+    if (!dataEl) return;
+    var spec;
+    try { spec = JSON.parse(dataEl.textContent); } catch (e) { return; }
+    var steps = spec.steps || [], horiz = spec.direction === "horizontal";
+    if (horiz) el.classList.add("is-horizontal");
+    var arrow = horiz ? RIGHT : DOWN;
+    var html = "";
+    steps.forEach(function(s, i) {
+      html += '<div class="fc-node' + (s.accent ? " is-accent" : "") + '">';
+      html += '<div class="fc-head"><span class="fc-title">' + escHtml(s.title) + '</span>';
+      if (s.tag) html += '<span class="fc-tag">' + escHtml(s.tag) + '</span>';
+      html += '</div>';
+      if (s.desc) html += '<div class="fc-desc">' + escHtml(s.desc) + '</div>';
+      html += '</div>';
+      if (i < steps.length - 1) html += '<div class="fc-arrow">' + arrow + '</div>';
+    });
+    el.innerHTML = html;
+  });
 }
 
 // Dynamic Prism loading
@@ -251,6 +356,9 @@ document.addEventListener("DOMContentLoaded", function() {
   initTheme();
   initLogo();
   setActiveNav();
+  initCodegen();
+  initSequenceDiagrams();
+  initFlowCharts();
   initPrism();
   initMermaid();
 });

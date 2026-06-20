@@ -17,7 +17,7 @@
 
   <main>
     <h1>ベンチマーク結果</h1>
-    <p>すべてのベンチマークは、<strong>E2E暗号化（AES-128-GCM）を有効にした</strong>bleRPCファームウェアを実行する<strong>nRF54L15 DK</strong>ペリフェラルに対して実施されました。MTUは247バイトにネゴシエーションされています。コネクションインターバルはプラットフォームにより異なります。</p>
+    <p>すべてのベンチマークは、<strong>E2E暗号化（AES-128-GCM）を有効にした</strong>bleRPCファームウェアを実行する<strong>nRF54L15 DK</strong>ペリフェラルに対して実施されました。MTUは247バイトで合意形成されています。コネクションインターバルはプラットフォームにより異なります。</p>
 
     <h2>スループット比較</h2>
     <div class="grid">
@@ -44,16 +44,16 @@
     <h2>プラットフォーム別詳細結果</h2>
 
     <h3>Python Central (macOS, bleak)</h3>
-    <p>コネクションインターバル: 15ms（macOSネゴシエーション） &mdash; <a href="https://github.com/tdaira/blerpc/blob/main/central_py/tests/test_integration.py">テストコード</a></p>
+    <p>コネクションインターバル: 15ms（macOSによる合意形成） &mdash; <a href="https://github.com/tdaira/blerpc/blob/main/central_py/tests/test_integration.py">テストコード</a></p>
     <table>
       <thead><tr><th>ベンチマーク</th><th>結果</th><th>詳細</th></tr></thead>
       <tbody>
-        <tr><td>flash_read_throughput</td><td><strong>30.3 KB/s</strong></td><td>10x 8192バイト、264.2 ms/回</td></tr>
-        <tr><td>flash_read_overhead</td><td><strong>60.1 ms/回</strong></td><td>1バイト x 20回</td></tr>
-        <tr><td>echo_roundtrip</td><td><strong>60.6 ms/回</strong></td><td>50回</td></tr>
-        <tr><td>data_write_throughput</td><td><strong>3.3 KB/s</strong></td><td>200バイト x 20回、59.9 ms/回</td></tr>
-        <tr><td>counter_stream (P&rarr;C)</td><td><strong>5.8 ms/アイテム</strong></td><td>20アイテム、117 ms</td></tr>
-        <tr><td>counter_upload (C&rarr;P)</td><td><strong>7.4 ms/アイテム</strong></td><td>20アイテム、147 ms</td></tr>
+        <tr><td>flash_read_throughput</td><td><strong>30.3 KB/s</strong></td><td>10x 8192バイト、264.2 ms/call</td></tr>
+        <tr><td>flash_read_overhead</td><td><strong>60.1 ms/call</strong></td><td>1バイト x 20回</td></tr>
+        <tr><td>echo_roundtrip</td><td><strong>60.6 ms/call</strong></td><td>50回</td></tr>
+        <tr><td>data_write_throughput</td><td><strong>3.3 KB/s</strong></td><td>200バイト x 20回、59.9 ms/call</td></tr>
+        <tr><td>counter_stream (P&rarr;C)</td><td><strong>5.8 ms/item</strong></td><td>20アイテム、117 ms</td></tr>
+        <tr><td>counter_upload (C&rarr;P)</td><td><strong>7.4 ms/item</strong></td><td>20アイテム、147 ms</td></tr>
       </tbody>
     </table>
     <table>
@@ -75,16 +75,16 @@
     </table>
 
     <h3>iOS Central (iPhone 16, CoreBluetooth)</h3>
-    <p>コネクションインターバル: 30ms（iOSネゴシエーション） &mdash; <a href="https://github.com/tdaira/blerpc/blob/main/central_ios/BlerpcCentral/Test/TestRunner.swift">テストコード</a></p>
+    <p>コネクションインターバル: 30ms（iOSによる合意形成） &mdash; <a href="https://github.com/tdaira/blerpc/blob/main/central_ios/BlerpcCentral/Test/TestRunner.swift">テストコード</a></p>
     <table>
       <thead><tr><th>ベンチマーク</th><th>結果</th><th>詳細</th></tr></thead>
       <tbody>
-        <tr><td>flash_read_throughput</td><td><strong>32.1 KB/s</strong></td><td>10x 8192バイト、249.0 ms/回</td></tr>
-        <tr><td>flash_read_overhead</td><td><strong>62.3 ms/回</strong></td><td>1バイト x 20回</td></tr>
-        <tr><td>echo_roundtrip</td><td><strong>60.0 ms/回</strong></td><td>50回</td></tr>
-        <tr><td>data_write_throughput</td><td><strong>3.3 KB/s</strong></td><td>200バイト x 20回、60.0 ms/回</td></tr>
-        <tr><td>counter_stream (P&rarr;C)</td><td><strong>6.1 ms/アイテム</strong></td><td>20アイテム、121 ms</td></tr>
-        <tr><td>counter_upload (C&rarr;P)</td><td><strong>4.5 ms/アイテム</strong></td><td>20アイテム、91 ms</td></tr>
+        <tr><td>flash_read_throughput</td><td><strong>32.1 KB/s</strong></td><td>10x 8192バイト、249.0 ms/call</td></tr>
+        <tr><td>flash_read_overhead</td><td><strong>62.3 ms/call</strong></td><td>1バイト x 20回</td></tr>
+        <tr><td>echo_roundtrip</td><td><strong>60.0 ms/call</strong></td><td>50回</td></tr>
+        <tr><td>data_write_throughput</td><td><strong>3.3 KB/s</strong></td><td>200バイト x 20回、60.0 ms/call</td></tr>
+        <tr><td>counter_stream (P&rarr;C)</td><td><strong>6.1 ms/item</strong></td><td>20アイテム、121 ms</td></tr>
+        <tr><td>counter_upload (C&rarr;P)</td><td><strong>4.5 ms/item</strong></td><td>20アイテム、91 ms</td></tr>
       </tbody>
     </table>
     <table>
@@ -101,16 +101,16 @@
     </table>
 
     <h3>Android Central (Pixel 5)</h3>
-    <p>コネクションインターバル: 30ms（Androidネゴシエーション） &mdash; <a href="https://github.com/tdaira/blerpc/blob/main/central_android/app/src/main/java/com/blerpc/android/test/TestRunner.kt">テストコード</a></p>
+    <p>コネクションインターバル: 30ms（Androidによる合意形成） &mdash; <a href="https://github.com/tdaira/blerpc/blob/main/central_android/app/src/main/java/com/blerpc/android/test/TestRunner.kt">テストコード</a></p>
     <table>
       <thead><tr><th>ベンチマーク</th><th>結果</th><th>詳細</th></tr></thead>
       <tbody>
-        <tr><td>flash_read_throughput</td><td><strong>59.0 KB/s</strong></td><td>10x 8192バイト、135.7 ms/回</td></tr>
-        <tr><td>flash_read_overhead</td><td><strong>90.4 ms/回</strong></td><td>1バイト x 20回</td></tr>
-        <tr><td>echo_roundtrip</td><td><strong>62.2 ms/回</strong></td><td>50回</td></tr>
-        <tr><td>data_write_throughput</td><td><strong>3.2 KB/s</strong></td><td>200バイト x 20回、60.3 ms/回</td></tr>
-        <tr><td>counter_stream (P&rarr;C)</td><td><strong>3.7 ms/アイテム</strong></td><td>20アイテム、73 ms</td></tr>
-        <tr><td>counter_upload (C&rarr;P)</td><td><strong>5.1 ms/アイテム</strong></td><td>20アイテム、101 ms</td></tr>
+        <tr><td>flash_read_throughput</td><td><strong>59.0 KB/s</strong></td><td>10x 8192バイト、135.7 ms/call</td></tr>
+        <tr><td>flash_read_overhead</td><td><strong>90.4 ms/call</strong></td><td>1バイト x 20回</td></tr>
+        <tr><td>echo_roundtrip</td><td><strong>62.2 ms/call</strong></td><td>50回</td></tr>
+        <tr><td>data_write_throughput</td><td><strong>3.2 KB/s</strong></td><td>200バイト x 20回、60.3 ms/call</td></tr>
+        <tr><td>counter_stream (P&rarr;C)</td><td><strong>3.7 ms/item</strong></td><td>20アイテム、73 ms</td></tr>
+        <tr><td>counter_upload (C&rarr;P)</td><td><strong>5.1 ms/item</strong></td><td>20アイテム、101 ms</td></tr>
       </tbody>
     </table>
     <table>

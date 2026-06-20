@@ -19,27 +19,46 @@
     <h1>リポジトリ</h1>
     <p>bleRPCは、メインのモノレポと、対応する各言語向けのプロトコルライブラリパッケージで構成されています。</p>
 
-    <h2>メインリポジトリ</h2>
-    <div class="card">
+    <h2>リポジトリの関係</h2>
+    <p>共有された単一の <code>.proto</code> 定義をもとに、言語ごとのプロトコルライブラリが提供され、各セントラルアプリとファームウェアから利用されます。</p>
+    <div class="hubdiagram">
+      <div class="hub-top">
+        <div class="hub-node is-hub">
+          <div class="hub-head"><span class="hub-title mono">blerpc.proto</span></div>
+          <div class="hub-desc">共有 Protocol Buffers 定義</div>
+        </div>
+      </div>
+      <div class="hub-connector">
+        <span class="hub-line"></span>
+        <span class="hub-conn-label">per language</span>
+        <span class="hub-line"></span>
+        <svg class="hub-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v13M6 12l6 6 6-6"/></svg>
+      </div>
+      <div class="hub-spokes">
+        <a class="hub-node" href="https://github.com/tdaira/blerpc-protocol" target="_blank" rel="noreferrer"><div class="hub-head"><span class="hub-title mono">blerpc-protocol</span><span class="hub-tag">Python / C</span></div><div class="hub-desc">リファレンス + ファームウェア</div></a>
+        <a class="hub-node" href="https://github.com/tdaira/blerpc-protocol-swift" target="_blank" rel="noreferrer"><div class="hub-head"><span class="hub-title mono">blerpc-protocol-swift</span><span class="hub-tag">Swift</span></div><div class="hub-desc">iOS セントラル</div></a>
+        <a class="hub-node" href="https://github.com/tdaira/blerpc-protocol-kt" target="_blank" rel="noreferrer"><div class="hub-head"><span class="hub-title mono">blerpc-protocol-kt</span><span class="hub-tag">Kotlin</span></div><div class="hub-desc">Android セントラル</div></a>
+        <a class="hub-node" href="https://github.com/tdaira/blerpc-protocol-dart" target="_blank" rel="noreferrer"><div class="hub-head"><span class="hub-title mono">blerpc-protocol-dart</span><span class="hub-tag">Dart</span></div><div class="hub-desc">Flutter セントラル</div></a>
+        <a class="hub-node" href="https://github.com/tdaira/blerpc-protocol-rn" target="_blank" rel="noreferrer"><div class="hub-head"><span class="hub-title mono">blerpc-protocol-rn</span><span class="hub-tag">TypeScript</span></div><div class="hub-desc">React Native セントラル</div></a>
+      </div>
+    </div>
+
+    <h2>アーキテクチャ概要</h2>
       <h3><a href="https://github.com/tdaira/blerpc">tdaira/blerpc</a></h3>
       <p>ファームウェア、セントラルクライアント、コードジェネレーター、テストを含むメインのモノレポ</p>
-      <table>
-        <thead><tr><th>ディレクトリ</th><th>説明</th></tr></thead>
-        <tbody>
-          <tr><td><code>peripheral_fw/</code></td><td>Zephyrペリフェラルファームウェア (C) &mdash; nRF54L15 &amp; EFR32xG22E</td></tr>
-          <tr><td><code>peripheral_py/</code></td><td>ロールリバーサルテスト用Pythonペリフェラル (bless)</td></tr>
-          <tr><td><code>central_py/</code></td><td>Pythonセントラルクライアント (bleak) + 統合テスト</td></tr>
-          <tr><td><code>central_fw/</code></td><td>デバイス間通信用Zephyrセントラルファームウェア (C)</td></tr>
-          <tr><td><code>central_android/</code></td><td>Androidセントラルアプリ (Kotlin)、テストランナー付き</td></tr>
-          <tr><td><code>central_ios/</code></td><td>iOSセントラルアプリ (Swift)、テストランナー付き</td></tr>
-          <tr><td><code>central_flutter/</code></td><td>Flutterセントラルアプリ (Dart)、テストランナー付き</td></tr>
-          <tr><td><code>central_rn/</code></td><td>React Nativeセントラルアプリ (TypeScript)、テストランナー付き</td></tr>
-          <tr><td><code>proto/</code></td><td>Protocol Buffers定義（<code>blerpc.proto</code>）</td></tr>
-          <tr><td><code>tools/generate-handlers/</code></td><td>コードジェネレーター (Go) &mdash; 全言語のハンドラーとクライアントを生成</td></tr>
-          <tr><td><code>boards/</code></td><td>カスタムボード定義 (EFR32xG22E)</td></tr>
-          <tr><td><code>docs/</code></td><td>追加ドキュメント（ファームウェアガイド）</td></tr>
-        </tbody>
-      </table>
+    <div class="filetree">
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">peripheral_fw/</span><span class="ft-desc">Zephyrペリフェラルファームウェア (C) &mdash; nRF54L15 &amp; EFR32xG22E</span><span class="ft-badge">C</span></div>
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">peripheral_py/</span><span class="ft-desc">ロールリバーサルテスト用Pythonペリフェラル (bless)</span><span class="ft-badge">Python</span></div>
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">central_py/</span><span class="ft-desc">Pythonセントラルクライアント (bleak) + 統合テスト</span><span class="ft-badge">Python</span></div>
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">central_fw/</span><span class="ft-desc">デバイス間通信用Zephyrセントラルファームウェア (C)</span><span class="ft-badge">C</span></div>
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">central_android/</span><span class="ft-desc">Androidセントラルアプリ (Kotlin)、テストランナー付き</span><span class="ft-badge">Kotlin</span></div>
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">central_ios/</span><span class="ft-desc">iOSセントラルアプリ (Swift)、テストランナー付き</span><span class="ft-badge">Swift</span></div>
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">central_flutter/</span><span class="ft-desc">Flutterセントラルアプリ (Dart)、テストランナー付き</span><span class="ft-badge">Dart</span></div>
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">central_rn/</span><span class="ft-desc">React Nativeセントラルアプリ (TypeScript)、テストランナー付き</span><span class="ft-badge">TypeScript</span></div>
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">proto/</span><span class="ft-desc">Protocol Buffers定義（<code>blerpc.proto</code>）</span></div>
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">tools/generate-handlers/</span><span class="ft-desc">コードジェネレーター (Go) &mdash; 全言語のハンドラーとクライアントを生成</span><span class="ft-badge">Go</span></div>
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">boards/</span><span class="ft-desc">カスタムボード定義 (EFR32xG22E)</span></div>
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">docs/</span><span class="ft-desc">追加ドキュメント（ファームウェアガイド）</span></div>
     </div>
 
     <h2>プロトコルライブラリ</h2>
@@ -83,50 +102,8 @@
       </div>
     </div>
 
-    <h2>アーキテクチャ概要</h2>
-    <p>リポジトリ間の関係：</p>
-    <div class="diagram">
-<pre>
-                         bleRPC (monorepo)
-            +-----------------------------------------+
-            |                                         |
-            |  proto/blerpc.proto                     |
-            |       |                                 |
-            |       v                                 |
-            |  tools/generate-handlers (Go)           |
-            |       |                                 |
-            |       +---> peripheral_fw/src/             |
-            |       |     generated_handlers.{c,h}    |
-            |       |                                 |
-            |       +---> central_py/blerpc/generated/   |
-            |       |     generated_client.py         |
-            |       |                                 |
-            |       +---> central_android/.../         |
-            |       |     GeneratedClient.kt          |
-            |       |                                 |
-            |       +---> central_ios/.../             |
-            |       |     GeneratedClient.swift        |
-            |       |                                 |
-            |       +---> central_flutter/.../         |
-            |       |     generated_client.dart        |
-            |       |                                 |
-            |       +---> central_rn/.../              |
-            |       |     GeneratedClient.ts           |
-            |       |                                 |
-            |       +---> central_fw/src/              |
-            |             generated_client.{c,h}       |
-            |                                         |
-            +-----------------------------------------+
-                    |           |            |     |     |
-                    v           v            v     v     v
-           blerpc-protocol  blerpc-     blerpc- blerpc- blerpc-
-           (Python + C)     protocol-kt proto-  proto-  proto-
-                                        swift   dart    rn
-</pre>
-    </div>
 
     <h2>CI / CD</h2>
-    <div class="card">
       <p>各リポジトリにはGitHub Actions CIがあり、プッシュおよびプルリクエストのたびに実行されます：</p>
       <table>
         <thead><tr><th>リポジトリ</th><th>CIチェック</th></tr></thead>
@@ -138,7 +115,6 @@
           <tr><td>blerpc-protocol-dart</td><td>dart analyze、dart test、pub.devへの自動公開</td></tr>
         </tbody>
       </table>
-    </div>
 
     <h2>ライセンス</h2>
     <p>すべてのbleRPCリポジトリは<a href="https://www.gnu.org/licenses/lgpl-3.0.html">GNU Lesser General Public License v3.0 (LGPL-3.0)</a>の静的リンク例外付きでライセンスされています。bleRPCライブラリに対して静的リンクする場合、再リンク可能なオブジェクトファイルの提供は不要です。詳細は各リポジトリの<code>LICENSING_EXCEPTION</code>ファイルを参照してください。</p>

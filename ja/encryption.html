@@ -17,10 +17,9 @@
 
   <main>
     <h1>エンドツーエンド暗号化</h1>
-    <p>bleRPCは、4ステップの鍵交換ハンドシェイクとAES-128-GCMセッション暗号化によるオプションのエンドツーエンド暗号化をサポートしています。暗号化は接続セットアップ時にネゴシエーションされ、アプリケーション層に対して透過的です。</p>
+    <p>bleRPCは、4ステップの鍵交換ハンドシェイクとAES-128-GCMセッション暗号化によるオプションのエンドツーエンド暗号化をサポートしています。暗号化は接続確立時に合意形成が行われ、アプリケーション層では意識する必要がありません。</p>
 
     <h2>概要</h2>
-    <div class="card">
       <table>
         <thead><tr><th>コンポーネント</th><th>アルゴリズム</th></tr></thead>
         <tbody>
@@ -31,10 +30,9 @@
           <tr><td>リプレイ防止</td><td>単調増加カウンター</td></tr>
         </tbody>
       </table>
-    </div>
 
-    <h2>ケイパビリティネゴシエーション</h2>
-    <p>暗号化は、ペリフェラルの<a href="protocol.html">CAPABILITIES</a>レスポンスでアドバタイズされます。6バイトのペイロードには<code>flags</code>フィールドが含まれます：</p>
+    <h2>機能の合意形成</h2>
+    <p>暗号化は、ペリフェラルの<a href="protocol.html">CAPABILITIES</a>レスポンスで通知されます。6バイトのペイロードには<code>flags</code>フィールドが含まれます：</p>
     <div class="packet-format-wrapper">
       <div class="packet-format">
         <div class="packet-field" style="flex:4"><div class="packet-field-name">max_request</div><div class="packet-field-size">16 bits (LE)</div></div>
@@ -45,31 +43,30 @@
     <p><code>flags &amp; 0x01</code>がセットされている場合、ペリフェラルは暗号化をサポートしており、セントラルは鍵交換ハンドシェイクを開始する必要があります。</p>
 
     <h2>鍵交換ハンドシェイク</h2>
-    <p>ハンドシェイクは4つのステップを使用し、各ステップはKEY_EXCHANGE制御コンテナ（<code>control_cmd=0x6</code>）で運ばれます。各ペイロードには1バイトのステップ識別子がプレフィックスとして付きます。</p>
+    <p>ハンドシェイクは4つのステップを使用し、各ステップはKEY_EXCHANGE制御コンテナ（<code>control_cmd=0x6</code>）で送信されます。各ペイロードには1バイトのステップ識別子がプレフィックスとして付きます。</p>
 
-    <div class="diagram">
-      <pre class="mermaid">
-sequenceDiagram
-    participant C as Central
-    participant P as Peripheral
-    Note over C: Generate ephemeral X25519 keypair
-    C->>P: Step 1: [step:1] + central_x25519_pubkey (33 bytes)
-    Note over P: Generate ephemeral X25519 keypair
-    Note over P: Compute shared_secret = X25519(priv, central_pub)
-    Note over P: Derive session_key = HKDF(shared_secret)
-    Note over P: Sign(ed25519_privkey, central_pub || peripheral_pub)
-    P->>C: Step 2: [step:1] + x25519_pub + signature + ed25519_pub (129 bytes)
-    Note over C: Compute shared_secret = X25519(priv, peripheral_pub)
-    Note over C: Derive session_key = HKDF(shared_secret)
-    Note over C: Verify signature (TOFU for first connection)
-    Note over C: Generate confirmation = encrypt(random, session_key)
-    C->>P: Step 3: [step:1] + encrypted_confirmation (45 bytes)
-    Note over P: Decrypt confirmation to verify session_key match
-    Note over P: Generate confirmation = encrypt(random, session_key)
-    P->>C: Step 4: [step:1] + encrypted_confirmation (45 bytes)
-    Note over C: Decrypt confirmation to verify session_key match
-    Note over C,P: Session key established - all subsequent data is encrypted
-      </pre>
+    <div class="seqdiag">
+      <script type="application/json">
+{"minWidth":680,"actors":["Central","Peripheral"],"messages":[
+{"self":"Central","label":"Generate ephemeral X25519 keypair"},
+{"from":"Central","to":"Peripheral","label":"Step 1: central_x25519_pubkey (33 B)","accent":true},
+{"self":"Peripheral","label":"Generate ephemeral X25519 keypair"},
+{"self":"Peripheral","label":"shared_secret = X25519(priv, central_pub)"},
+{"self":"Peripheral","label":"session_key = HKDF(shared_secret)"},
+{"self":"Peripheral","label":"Sign(central_pub || peripheral_pub)"},
+{"from":"Peripheral","to":"Central","label":"Step 2: x25519_pub + signature + ed25519_pub (129 B)","dashed":true,"accent":true},
+{"self":"Central","label":"shared_secret = X25519(priv, peripheral_pub)"},
+{"self":"Central","label":"session_key = HKDF(shared_secret)"},
+{"self":"Central","label":"Verify signature (TOFU on first connection)"},
+{"self":"Central","label":"confirmation = encrypt(random, session_key)"},
+{"from":"Central","to":"Peripheral","label":"Step 3: encrypted_confirmation (45 B)","accent":true},
+{"self":"Peripheral","label":"Decrypt confirmation, verify session_key"},
+{"self":"Peripheral","label":"confirmation = encrypt(random, session_key)"},
+{"from":"Peripheral","to":"Central","label":"Step 4: encrypted_confirmation (45 B)","dashed":true,"accent":true},
+{"self":"Central","label":"Decrypt confirmation, verify session_key"},
+{"note":"Session key established — all subsequent data is encrypted"}
+]}
+      </script>
     </div>
 
     <h3>ステップ1: Central &rarr; Peripheral (33バイト)</h3>
@@ -205,7 +202,7 @@ session_key   = HKDF-SHA256(
     <h2>設定</h2>
     <div class="card">
       <h3>暗号化の有効化</h3>
-      <p>暗号化はペリフェラル側で有効にします。有効にすると、ペリフェラルはケイパビリティで暗号化サポートをアドバタイズし、セントラルが鍵交換を開始することを期待</p>
+      <p>暗号化はペリフェラル側で有効にします。有効にすると、ペリフェラルは対応機能として暗号化サポートを通知し、セントラルが鍵交換を開始することを期待</p>
       <h3>Zephyrファームウェア</h3>
       <pre><code># prj.conf
 CONFIG_BLERPC_ENCRYPTION=y</code></pre>

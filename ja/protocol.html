@@ -19,24 +19,26 @@
     <h1>プロトコル仕様</h1>
     <p>bleRPCはBLE GATTの上に階層化されたプロトコルスタックを使用します。<strong>コマンド層</strong>はProtocol BuffersペイロードをRPCメタデータで包み、オプションの<strong>暗号化層</strong>はシリアライズされたコマンドを暗号化し、<strong>コンテナ層</strong>はMTUサイズのパケットに分割してBLE伝送します。</p>
 
-    <div class="diagram">
-      <pre class="mermaid">
-graph TD
-    A["Application"] --> B["Command Layer&lt;br/&gt;Protobuf encode/decode + command metadata"]
-    B --> E["Encryption Layer (optional)&lt;br/&gt;AES-128-GCM encrypt/decrypt"]
-    E --> C["Container Layer&lt;br/&gt;MTU-based split/reassemble + sequencing"]
-    C --> D["BLE GATT&lt;br/&gt;(single characteristic)"]
-      </pre>
+    <div class="flowchart">
+      <script type="application/json">
+{"steps":[
+{"title":"Application"},
+{"title":"Command Layer","desc":"Protobuf encode/decode + command metadata"},
+{"title":"Encryption Layer","desc":"AES-128-GCM encrypt/decrypt","tag":"optional"},
+{"title":"Container Layer","desc":"MTU-based split/reassemble + sequencing"},
+{"title":"BLE GATT","desc":"(single characteristic)"}
+]}
+      </script>
     </div>
 
     <h2>BLEトランスポート</h2>
     <div class="card">
       <p>すべての通信は<strong>単一のGATT Characteristic</strong>を使用します：</p>
       <ul>
-        <li><strong>リクエスト</strong>: Centralが<em>Write Without Response</em>で書き込み</li>
-        <li><strong>レスポンス</strong>: Peripheralが<em>Notify</em>で送信</li>
+        <li><strong>リクエスト</strong>: CentralがWrite Without Responseで書き込み</li>
+        <li><strong>レスポンス</strong>: PeripheralがNotifyで送信</li>
       </ul>
-      <p>MTUはBLE ATT MTU Exchangeプロシージャにより自動的にネゴシエーションされます。アプリケーションはネゴシエーションされたMTU（ATTオーバーヘッドの3バイトを引いた値）を使用して、コンテナペイロードの最大サイズを決定</p>
+      <p>MTUはBLE ATT MTU Exchangeプロシージャにより自動的に合意形成されます。アプリケーションは合意形成されたMTU（ATTオーバーヘッドの3バイトを引いた値）を使用して、コンテナペイロードの最大サイズを決定</p>
       <p>デフォルトタイムアウトは<strong>100ms</strong>で、タイムアウト制御コンテナで設定可能</p>
     </div>
 
@@ -107,7 +109,6 @@ graph TD
 
     <h3>コンテナ分割の例</h3>
     <p>MTU=247（ATTオーバーヘッド後の利用可能サイズ244）で500バイトのコマンドペイロードの場合：</p>
-    <div class="card">
       <table>
         <thead><tr><th>コンテナ</th><th>タイプ</th><th>ヘッダー</th><th>ペイロード</th><th>合計</th></tr></thead>
         <tbody>
@@ -117,17 +118,15 @@ graph TD
         </tbody>
       </table>
       <p style="margin-bottom:0">ペイロード合計: <strong>500バイト</strong>（238 + 240 + 22）</p>
-    </div>
 
     <h3>最大ペイロード</h3>
     <p><code>sequence_number</code>は8ビットであるため、単一トランザクションは約255コンテナに制限されます。一般的なMTU 247（後続コンテナあたり240バイト）の場合、トランザクションあたりの実用的な最大ペイロードは約<strong>60 KB</strong>です。より大きな転送には、複数のリクエスト/レスポンスサイクルを使用してください。</p>
 
     <h2>制御コンテナ</h2>
-    <p>制御コンテナ（<code>type=0b11</code>）は、アプリケーションデータの代わりにプロトコルレベルのコマンドを運びます。</p>
+    <p>制御コンテナ（<code>type=0b11</code>）は、アプリケーションデータの代わりにプロトコルレベルのコマンドを送信します。</p>
 
     <h3>タイムアウト共有 (control_cmd=0x1)</h3>
     <p>ペリフェラルが処理タイムアウトをセントラルに伝えることができます。</p>
-    <div class="card">
       <h3>リクエスト (Central &rarr; Peripheral)</h3>
       <table>
         <thead><tr><th>フィールド</th><th>値</th></tr></thead>
@@ -147,11 +146,9 @@ graph TD
           <tr><td>payload</td><td><code>timeout_ms</code>（16ビットLE、ミリ秒）</td></tr>
         </tbody>
       </table>
-    </div>
 
-    <h3>ケイパビリティ共有 (control_cmd=0x4)</h3>
+    <h3>機能共有 (control_cmd=0x4)</h3>
     <p>ペリフェラルがバッファ制約と機能フラグをセントラルに伝えることができます。</p>
-    <div class="card">
       <h3>リクエスト (Central &rarr; Peripheral)</h3>
       <table>
         <thead><tr><th>フィールド</th><th>値</th></tr></thead>
@@ -177,11 +174,9 @@ graph TD
         </tbody>
       </table>
       <p><code>flags</code>が存在しない場合（後方互換性のための4バイトペイロード）、オプション機能は利用不可</p>
-    </div>
 
     <h3>ストリーム終了 (control_cmd=0x2, 0x3)</h3>
     <p>ストリーミングシーケンスの終了を通知します。どちら側からでもストリームを終了できます。</p>
-    <div class="card">
       <table>
         <thead><tr><th>control_cmd</th><th>方向</th><th>説明</th></tr></thead>
         <tbody>
@@ -190,11 +185,9 @@ graph TD
         </tbody>
       </table>
       <p>どちらも<code>payload_len=0x00</code>（ペイロードなし）</p>
-    </div>
 
     <h3>エラー通知 (control_cmd=0x5)</h3>
     <p>エラー発生時（例: レスポンスがバッファ制限を超えた場合）にペリフェラルから送信されます。</p>
-    <div class="card">
       <table>
         <thead><tr><th>フィールド</th><th>値</th></tr></thead>
         <tbody>
@@ -208,11 +201,9 @@ graph TD
       <ul>
         <li><code>0x01</code> &mdash; <strong>RESPONSE_TOO_LARGE</strong>: レスポンスペイロードが<code>max_response_payload_size</code>を超過</li>
       </ul>
-    </div>
 
     <h3>鍵交換 (control_cmd=0x6)</h3>
-    <p>暗号化セッションを確立するための<a href="encryption.html">鍵交換ハンドシェイク</a>ペイロードを運びます。ペリフェラルがケイパビリティの<code>flags</code>フィールドで暗号化サポートをアドバタイズした場合に使用されます。</p>
-    <div class="card">
+    <p>暗号化セッションを確立するための<a href="encryption.html">鍵交換ハンドシェイク</a>ペイロードを送信します。ペリフェラルが対応機能の<code>flags</code>フィールドで暗号化サポートを通知した場合に使用されます。</p>
       <table>
         <thead><tr><th>フィールド</th><th>値</th></tr></thead>
         <tbody>
@@ -222,8 +213,7 @@ graph TD
           <tr><td>payload</td><td>鍵交換ステップデータ（<a href="encryption.html">暗号化</a>を参照）</td></tr>
         </tbody>
       </table>
-      <p>ハンドシェイクを完了するために4つのコンテナ（ステップ1〜4）が交換されます。完了後、すべての後続データコンテナは暗号化されたペイロードを運ぶ</p>
-    </div>
+      <p>ハンドシェイクを完了するために4つのコンテナ（ステップ1〜4）が交換されます。完了後、すべての後続データコンテナは暗号化されたペイロードを送信します</p>
 
     <h3>暗号化データコンテナ</h3>
     <p>暗号化が有効な場合、データコンテナ（FIRST / SUBSEQUENT）のペイロードは、シリアライズされたコマンドの暗号化形式に置き換えられます：</p>
@@ -284,24 +274,23 @@ graph TD
     <h2>リクエスト/レスポンスフロー</h2>
     <p>完全なRPC呼び出しは、コマンド層でのエンコード、コンテナ層での分割、BLE伝送、そして受信側での逆処理で構成されます：</p>
 
-    <div class="diagram">
-      <pre class="mermaid">
-sequenceDiagram
-    participant C as Central
-    participant P as Peripheral
-    Note over C: 1. Protobuf encode request
-    Note over C: 2. Wrap in command header
-    Note over C: 3. Split into containers
-    C->>P: Write Without Response (FIRST)
-    C->>P: Write Without Response (SUBSEQUENT...)
-    Note over P: 4. Reassemble containers
-    Note over P: 5. Decode command + Protobuf
-    Note over P: 6. Execute handler
-    Note over P: 7. Encode response + split
-    P->>C: Notify (FIRST)
-    P->>C: Notify (SUBSEQUENT...)
-    Note over C: 8. Reassemble + decode response
-      </pre>
+    <div class="seqdiag">
+      <script type="application/json">
+{"minWidth":520,"actors":["Central","Peripheral"],"messages":[
+{"self":"Central","label":"1. Protobuf encode request"},
+{"self":"Central","label":"2. Wrap in command header"},
+{"self":"Central","label":"3. Split into containers"},
+{"from":"Central","to":"Peripheral","label":"Write Without Response (FIRST)","accent":true},
+{"from":"Central","to":"Peripheral","label":"Write Without Response (SUBSEQUENT...)","accent":true},
+{"self":"Peripheral","label":"4. Reassemble containers"},
+{"self":"Peripheral","label":"5. Decode command + Protobuf"},
+{"self":"Peripheral","label":"6. Execute handler"},
+{"self":"Peripheral","label":"7. Encode response + split"},
+{"from":"Peripheral","to":"Central","label":"Notify (FIRST)","dashed":true,"accent":true},
+{"from":"Peripheral","to":"Central","label":"Notify (SUBSEQUENT...)","dashed":true,"accent":true},
+{"self":"Central","label":"8. Reassemble + decode response"}
+]}
+      </script>
     </div>
 
     <h2>ストリーミング</h2>
@@ -309,58 +298,54 @@ sequenceDiagram
 
     <h3>Peripheral &rarr; Central ストリーム（サーバーストリーミング）</h3>
     <p>1つのリクエストが複数のレスポンスをトリガーします。ストリームは<code>STREAM_END_P2C</code>制御コンテナで終了します。</p>
-    <div class="diagram">
-      <pre class="mermaid">
-sequenceDiagram
-    participant C as Central
-    participant P as Peripheral
-    C->>P: Request
-    P->>C: Response 1 (Notify)
-    P->>C: Response 2 (Notify)
-    P->>C: Response 3 (Notify)
-    P-->>C: STREAM_END_P2C (control)
-      </pre>
+    <div class="seqdiag">
+      <script type="application/json">
+{"minWidth":420,"actors":["Central","Peripheral"],"messages":[
+{"from":"Central","to":"Peripheral","label":"Request","accent":true},
+{"from":"Peripheral","to":"Central","label":"Response 1 (Notify)","dashed":true},
+{"from":"Peripheral","to":"Central","label":"Response 2 (Notify)","dashed":true},
+{"from":"Peripheral","to":"Central","label":"Response 3 (Notify)","dashed":true},
+{"from":"Peripheral","to":"Central","label":"STREAM_END_P2C (control)","dashed":true,"accent":true}
+]}
+      </script>
     </div>
 
     <h3>Central &rarr; Peripheral ストリーム（クライアントストリーミング）</h3>
     <p>複数のリクエストが送信され、<code>STREAM_END_C2P</code>制御コンテナが続きます。ペリフェラルは最終メッセージで応答します。</p>
-    <div class="diagram">
-      <pre class="mermaid">
-sequenceDiagram
-    participant C as Central
-    participant P as Peripheral
-    C->>P: Request 1
-    C->>P: Request 2
-    C->>P: Request 3
-    C-->>P: STREAM_END_C2P (control)
-    P->>C: Final Response (Notify)
-      </pre>
+    <div class="seqdiag">
+      <script type="application/json">
+{"minWidth":420,"actors":["Central","Peripheral"],"messages":[
+{"from":"Central","to":"Peripheral","label":"Request 1","accent":true},
+{"from":"Central","to":"Peripheral","label":"Request 2","accent":true},
+{"from":"Central","to":"Peripheral","label":"Request 3","accent":true},
+{"from":"Central","to":"Peripheral","label":"STREAM_END_C2P (control)","dashed":true,"accent":true},
+{"from":"Peripheral","to":"Central","label":"Final Response (Notify)","dashed":true}
+]}
+      </script>
     </div>
 
     <h2>接続セットアップシーケンス</h2>
     <p>セントラルがペリフェラルに接続する際、以下の初期化ステップを実行します：</p>
-    <div class="diagram">
-      <pre class="mermaid">
-sequenceDiagram
-    participant C as Central
-    participant P as Peripheral
-    C->>P: BLE Connect
-    C->>P: MTU Exchange
-    C->>P: Discover Services
-    C->>P: Enable Notifications
-    C->>P: Timeout Request (ctrl)
-    P->>C: Timeout Response (e.g. 100ms)
-    C->>P: Capability Request (ctrl)
-    P->>C: Capability Response (max_req, max_resp, flags)
-    opt Encryption (flags &amp; 0x01)
-        C->>P: Key Exchange Step 1 (ctrl 0x6)
-        P->>C: Key Exchange Step 2 (ctrl 0x6)
-        C->>P: Key Exchange Step 3 (ctrl 0x6)
-        P->>C: Key Exchange Step 4 (ctrl 0x6)
-        Note over C,P: AES-128-GCM session established
-    end
-    Note over C,P: Ready for RPC calls
-      </pre>
+    <div class="seqdiag">
+      <script type="application/json">
+{"minWidth":640,"actors":["Central","Peripheral"],"messages":[
+{"from":"Central","to":"Peripheral","label":"BLE Connect","accent":true},
+{"from":"Central","to":"Peripheral","label":"MTU Exchange","accent":true},
+{"from":"Central","to":"Peripheral","label":"Discover Services","accent":true},
+{"from":"Central","to":"Peripheral","label":"Enable Notifications","accent":true},
+{"from":"Central","to":"Peripheral","label":"Timeout Request (ctrl)","accent":true},
+{"from":"Peripheral","to":"Central","label":"Timeout Response (e.g. 100ms)","dashed":true},
+{"from":"Central","to":"Peripheral","label":"Capability Request (ctrl)","accent":true},
+{"from":"Peripheral","to":"Central","label":"Capability Response (max_req, max_resp, flags)","dashed":true},
+{"note":"Optional — when encryption is enabled (flags & 0x01)"},
+{"from":"Central","to":"Peripheral","label":"Key Exchange Step 1 (ctrl 0x6)","accent":true},
+{"from":"Peripheral","to":"Central","label":"Key Exchange Step 2 (ctrl 0x6)","dashed":true},
+{"from":"Central","to":"Peripheral","label":"Key Exchange Step 3 (ctrl 0x6)","accent":true},
+{"from":"Peripheral","to":"Central","label":"Key Exchange Step 4 (ctrl 0x6)","dashed":true},
+{"note":"AES-128-GCM session established"},
+{"note":"Ready for RPC calls"}
+]}
+      </script>
     </div>
   </main>
 

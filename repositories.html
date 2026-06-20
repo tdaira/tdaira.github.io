@@ -19,27 +19,46 @@
     <h1>Repositories</h1>
     <p>bleRPC is organized into a main monorepo and several protocol library packages for each supported language.</p>
 
-    <h2>Main Repository</h2>
-    <div class="card">
+    <h2>Repository Relationships</h2>
+    <p>A single shared set of <code>.proto</code> definitions backs one protocol library per language, consumed by the central apps and firmware.</p>
+    <div class="hubdiagram">
+      <div class="hub-top">
+        <div class="hub-node is-hub">
+          <div class="hub-head"><span class="hub-title mono">blerpc.proto</span></div>
+          <div class="hub-desc">Shared Protocol Buffers definitions</div>
+        </div>
+      </div>
+      <div class="hub-connector">
+        <span class="hub-line"></span>
+        <span class="hub-conn-label">per language</span>
+        <span class="hub-line"></span>
+        <svg class="hub-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v13M6 12l6 6 6-6"/></svg>
+      </div>
+      <div class="hub-spokes">
+        <a class="hub-node" href="https://github.com/tdaira/blerpc-protocol" target="_blank" rel="noreferrer"><div class="hub-head"><span class="hub-title mono">blerpc-protocol</span><span class="hub-tag">Python / C</span></div><div class="hub-desc">Reference + firmware</div></a>
+        <a class="hub-node" href="https://github.com/tdaira/blerpc-protocol-swift" target="_blank" rel="noreferrer"><div class="hub-head"><span class="hub-title mono">blerpc-protocol-swift</span><span class="hub-tag">Swift</span></div><div class="hub-desc">iOS central</div></a>
+        <a class="hub-node" href="https://github.com/tdaira/blerpc-protocol-kt" target="_blank" rel="noreferrer"><div class="hub-head"><span class="hub-title mono">blerpc-protocol-kt</span><span class="hub-tag">Kotlin</span></div><div class="hub-desc">Android central</div></a>
+        <a class="hub-node" href="https://github.com/tdaira/blerpc-protocol-dart" target="_blank" rel="noreferrer"><div class="hub-head"><span class="hub-title mono">blerpc-protocol-dart</span><span class="hub-tag">Dart</span></div><div class="hub-desc">Flutter central</div></a>
+        <a class="hub-node" href="https://github.com/tdaira/blerpc-protocol-rn" target="_blank" rel="noreferrer"><div class="hub-head"><span class="hub-title mono">blerpc-protocol-rn</span><span class="hub-tag">TypeScript</span></div><div class="hub-desc">React Native central</div></a>
+      </div>
+    </div>
+
+    <h2>Architecture Overview</h2>
       <h3><a href="https://github.com/tdaira/blerpc">tdaira/blerpc</a></h3>
       <p>The main monorepo containing firmware, central clients, code generators, and tests.</p>
-      <table>
-        <thead><tr><th>Directory</th><th>Description</th></tr></thead>
-        <tbody>
-          <tr><td><code>peripheral_fw/</code></td><td>Zephyr peripheral firmware (C) &mdash; nRF54L15 &amp; EFR32xG22E</td></tr>
-          <tr><td><code>peripheral_py/</code></td><td>Python peripheral (bless) for role-reversal testing</td></tr>
-          <tr><td><code>central_py/</code></td><td>Python central client (bleak) + integration tests</td></tr>
-          <tr><td><code>central_fw/</code></td><td>Zephyr central firmware (C) for device-to-device communication</td></tr>
-          <tr><td><code>central_android/</code></td><td>Android central app (Kotlin) with test runner</td></tr>
-          <tr><td><code>central_ios/</code></td><td>iOS central app (Swift) with test runner</td></tr>
-          <tr><td><code>central_flutter/</code></td><td>Flutter central app (Dart) with test runner</td></tr>
-          <tr><td><code>central_rn/</code></td><td>React Native central app (TypeScript) with test runner</td></tr>
-          <tr><td><code>proto/</code></td><td>Protocol Buffers definitions (<code>blerpc.proto</code>)</td></tr>
-          <tr><td><code>tools/generate-handlers/</code></td><td>Code generator (Go) &mdash; generates handlers and clients for all languages</td></tr>
-          <tr><td><code>boards/</code></td><td>Custom board definitions (EFR32xG22E)</td></tr>
-          <tr><td><code>docs/</code></td><td>Additional documentation (firmware guide)</td></tr>
-        </tbody>
-      </table>
+    <div class="filetree">
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">peripheral_fw/</span><span class="ft-desc">Zephyr peripheral firmware (C) &mdash; nRF54L15 &amp; EFR32xG22E</span><span class="ft-badge">C</span></div>
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">peripheral_py/</span><span class="ft-desc">Python peripheral (bless) for role-reversal testing</span><span class="ft-badge">Python</span></div>
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">central_py/</span><span class="ft-desc">Python central client (bleak) + integration tests</span><span class="ft-badge">Python</span></div>
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">central_fw/</span><span class="ft-desc">Zephyr central firmware (C) for device-to-device communication</span><span class="ft-badge">C</span></div>
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">central_android/</span><span class="ft-desc">Android central app (Kotlin) with test runner</span><span class="ft-badge">Kotlin</span></div>
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">central_ios/</span><span class="ft-desc">iOS central app (Swift) with test runner</span><span class="ft-badge">Swift</span></div>
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">central_flutter/</span><span class="ft-desc">Flutter central app (Dart) with test runner</span><span class="ft-badge">Dart</span></div>
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">central_rn/</span><span class="ft-desc">React Native central app (TypeScript) with test runner</span><span class="ft-badge">TypeScript</span></div>
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">proto/</span><span class="ft-desc">Protocol Buffers definitions (<code>blerpc.proto</code>)</span></div>
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">tools/generate-handlers/</span><span class="ft-desc">Code generator (Go) &mdash; generates handlers and clients for all languages</span><span class="ft-badge">Go</span></div>
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">boards/</span><span class="ft-desc">Custom board definitions (EFR32xG22E)</span></div>
+      <div class="ft-row"><svg class="ft-icon ft-folder" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span class="ft-name">docs/</span><span class="ft-desc">Additional documentation (firmware guide)</span></div>
     </div>
 
     <h2>Protocol Libraries</h2>
@@ -83,50 +102,8 @@
       </div>
     </div>
 
-    <h2>Architecture Overview</h2>
-    <p>How the repositories relate to each other:</p>
-    <div class="diagram">
-<pre>
-                         bleRPC (monorepo)
-            +-----------------------------------------+
-            |                                         |
-            |  proto/blerpc.proto                     |
-            |       |                                 |
-            |       v                                 |
-            |  tools/generate-handlers (Go)           |
-            |       |                                 |
-            |       +---> peripheral_fw/src/             |
-            |       |     generated_handlers.{c,h}    |
-            |       |                                 |
-            |       +---> central_py/blerpc/generated/   |
-            |       |     generated_client.py         |
-            |       |                                 |
-            |       +---> central_android/.../         |
-            |       |     GeneratedClient.kt          |
-            |       |                                 |
-            |       +---> central_ios/.../             |
-            |       |     GeneratedClient.swift        |
-            |       |                                 |
-            |       +---> central_flutter/.../         |
-            |       |     generated_client.dart        |
-            |       |                                 |
-            |       +---> central_rn/.../              |
-            |       |     GeneratedClient.ts           |
-            |       |                                 |
-            |       +---> central_fw/src/              |
-            |             generated_client.{c,h}       |
-            |                                         |
-            +-----------------------------------------+
-                    |           |            |     |     |
-                    v           v            v     v     v
-           blerpc-protocol  blerpc-     blerpc- blerpc- blerpc-
-           (Python + C)     protocol-kt proto-  proto-  proto-
-                                        swift   dart    rn
-</pre>
-    </div>
 
     <h2>CI / CD</h2>
-    <div class="card">
       <p>Each repository has GitHub Actions CI that runs on every push and pull request:</p>
       <table>
         <thead><tr><th>Repository</th><th>CI Checks</th></tr></thead>
@@ -138,7 +115,6 @@
           <tr><td>blerpc-protocol-dart</td><td>dart analyze, dart test, auto-publish to pub.dev</td></tr>
         </tbody>
       </table>
-    </div>
 
     <h2>License</h2>
     <p>All bleRPC repositories are licensed under the <a href="https://www.gnu.org/licenses/lgpl-3.0.html">GNU Lesser General Public License v3.0 (LGPL-3.0)</a> with a static linking exception. You may statically link against bleRPC libraries without being required to provide relinkable object files. See the <code>LICENSING_EXCEPTION</code> file in each repository for details.</p>

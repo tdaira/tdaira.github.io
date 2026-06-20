@@ -20,7 +20,6 @@
     <p>bleRPC 支持可选的端到端加密，使用 4 步密钥交换握手和 AES-128-GCM 会话加密。加密在连接建立期间协商，对应用层透明。</p>
 
     <h2>概述</h2>
-    <div class="card">
       <table>
         <thead><tr><th>组件</th><th>算法</th></tr></thead>
         <tbody>
@@ -31,7 +30,6 @@
           <tr><td>重放保护</td><td>单调递增计数器</td></tr>
         </tbody>
       </table>
-    </div>
 
     <h2>能力协商</h2>
     <p>加密由 peripheral 在 <a href="protocol.html">CAPABILITIES</a> 响应中广播。6 字节载荷包含 <code>flags</code> 字段：</p>
@@ -47,29 +45,28 @@
     <h2>密钥交换握手</h2>
     <p>握手使用 4 个步骤，每个步骤都在 KEY_EXCHANGE 控制容器（<code>control_cmd=0x6</code>）中传输。每个载荷以 1 字节步骤标识符为前缀。</p>
 
-    <div class="diagram">
-      <pre class="mermaid">
-sequenceDiagram
-    participant C as Central
-    participant P as Peripheral
-    Note over C: Generate ephemeral X25519 keypair
-    C->>P: Step 1: [step:1] + central_x25519_pubkey (33 bytes)
-    Note over P: Generate ephemeral X25519 keypair
-    Note over P: Compute shared_secret = X25519(priv, central_pub)
-    Note over P: Derive session_key = HKDF(shared_secret)
-    Note over P: Sign(ed25519_privkey, central_pub || peripheral_pub)
-    P->>C: Step 2: [step:1] + x25519_pub + signature + ed25519_pub (129 bytes)
-    Note over C: Compute shared_secret = X25519(priv, peripheral_pub)
-    Note over C: Derive session_key = HKDF(shared_secret)
-    Note over C: Verify signature (TOFU for first connection)
-    Note over C: Generate confirmation = encrypt(random, session_key)
-    C->>P: Step 3: [step:1] + encrypted_confirmation (45 bytes)
-    Note over P: Decrypt confirmation to verify session_key match
-    Note over P: Generate confirmation = encrypt(random, session_key)
-    P->>C: Step 4: [step:1] + encrypted_confirmation (45 bytes)
-    Note over C: Decrypt confirmation to verify session_key match
-    Note over C,P: Session key established - all subsequent data is encrypted
-      </pre>
+    <div class="seqdiag">
+      <script type="application/json">
+{"minWidth":680,"actors":["Central","Peripheral"],"messages":[
+{"self":"Central","label":"Generate ephemeral X25519 keypair"},
+{"from":"Central","to":"Peripheral","label":"Step 1: central_x25519_pubkey (33 B)","accent":true},
+{"self":"Peripheral","label":"Generate ephemeral X25519 keypair"},
+{"self":"Peripheral","label":"shared_secret = X25519(priv, central_pub)"},
+{"self":"Peripheral","label":"session_key = HKDF(shared_secret)"},
+{"self":"Peripheral","label":"Sign(central_pub || peripheral_pub)"},
+{"from":"Peripheral","to":"Central","label":"Step 2: x25519_pub + signature + ed25519_pub (129 B)","dashed":true,"accent":true},
+{"self":"Central","label":"shared_secret = X25519(priv, peripheral_pub)"},
+{"self":"Central","label":"session_key = HKDF(shared_secret)"},
+{"self":"Central","label":"Verify signature (TOFU on first connection)"},
+{"self":"Central","label":"confirmation = encrypt(random, session_key)"},
+{"from":"Central","to":"Peripheral","label":"Step 3: encrypted_confirmation (45 B)","accent":true},
+{"self":"Peripheral","label":"Decrypt confirmation, verify session_key"},
+{"self":"Peripheral","label":"confirmation = encrypt(random, session_key)"},
+{"from":"Peripheral","to":"Central","label":"Step 4: encrypted_confirmation (45 B)","dashed":true,"accent":true},
+{"self":"Central","label":"Decrypt confirmation, verify session_key"},
+{"note":"Session key established — all subsequent data is encrypted"}
+]}
+      </script>
     </div>
 
     <h3>步骤 1：Central &rarr; Peripheral（33 字节）</h3>
