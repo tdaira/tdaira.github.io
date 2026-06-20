@@ -247,6 +247,13 @@ pre[class*="language-"] {
 [data-theme="light"] .token.function, [data-theme="light"] .token.class-name { color: #2e59a8; }
 [data-theme="light"] .token.regex, [data-theme="light"] .token.important, [data-theme="light"] .token.variable { color: #a07020; }
 
+/* Tables can contain long unbreakable code identifiers. Wrapping them in a
+   scroll container (added by script.js) keeps a wide table from widening the
+   whole page — which on mobile would clip the sticky header and leave blank
+   space on the right. The table still fills the width when it fits. */
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 1.5rem; }
+.table-wrap > table { margin-bottom: 0; }
+
 table {
   width: 100%;
   border-collapse: collapse;

@@ -273,6 +273,18 @@ function initSequenceDiagrams() {
   });
 }
 
+// Wrap content tables in a horizontal-scroll container so a wide table
+// (e.g. long code identifiers) scrolls instead of widening the whole page.
+function initTableScroll() {
+  document.querySelectorAll("main table").forEach(function(table) {
+    if (table.parentElement && table.parentElement.classList.contains("table-wrap")) return;
+    var wrap = document.createElement("div");
+    wrap.className = "table-wrap";
+    table.parentNode.insertBefore(wrap, table);
+    wrap.appendChild(table);
+  });
+}
+
 // Flow charts (design system component, rendered from JSON)
 function initFlowCharts() {
   var DOWN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v15M6 13l6 6 6-6"/></svg>';
@@ -357,6 +369,7 @@ document.addEventListener("DOMContentLoaded", function() {
   initLogo();
   setActiveNav();
   initCodegen();
+  initTableScroll();
   initSequenceDiagrams();
   initFlowCharts();
   initPrism();
