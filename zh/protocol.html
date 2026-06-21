@@ -10,7 +10,7 @@
   <link rel="alternate" hreflang="ja" href="https://blerpc.net/ja/protocol.html">
   <link rel="alternate" hreflang="zh" href="https://blerpc.net/zh/protocol.html">
   <link rel="alternate" hreflang="x-default" href="https://blerpc.net/protocol.html">
-  <meta name="description" content="bleRPC协议规范。命令层、容器层、MTU感知分片、BLE GATT上的请求-响应和流式传输">
+  <meta name="description" content="bleRPC协议规范。命令层、容器层、自适应MTU分片、BLE GATT上的请求-响应和流式传输">
   <!-- Icons / favicon -->
   <link rel="icon" href="/favicon.ico" sizes="32x32">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
@@ -19,7 +19,7 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="bleRPC">
   <meta property="og:title" content="协议规范 - bleRPC">
-  <meta property="og:description" content="bleRPC协议规范。命令层、容器层、MTU感知分片、BLE GATT上的请求-响应和流式传输">
+  <meta property="og:description" content="bleRPC协议规范。命令层、容器层、自适应MTU分片、BLE GATT上的请求-响应和流式传输">
   <meta property="og:url" content="https://blerpc.net/zh/protocol.html">
   <meta property="og:image" content="https://blerpc.net/og-image.png">
   <meta property="og:image:width" content="1200">
@@ -31,7 +31,7 @@
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="协议规范 - bleRPC">
-  <meta name="twitter:description" content="bleRPC协议规范。命令层、容器层、MTU感知分片、BLE GATT上的请求-响应和流式传输">
+  <meta name="twitter:description" content="bleRPC协议规范。命令层、容器层、自适应MTU分片、BLE GATT上的请求-响应和流式传输">
   <meta name="twitter:image" content="https://blerpc.net/og-image.png">
   <meta name="twitter:image:alt" content="bleRPC — Type-safe RPC over Bluetooth Low Energy">
 </head>
@@ -40,7 +40,7 @@
 
   <main>
     <h1>协议规范</h1>
-    <p>bleRPC 在 BLE GATT 之上使用分层协议栈。<strong>命令层</strong>使用 RPC 元数据包装 Protocol Buffers 载荷，可选的<strong>加密层</strong>加密序列化的命令，<strong>容器层</strong>将它们分片为 MTU 大小的数据包进行 BLE 传输。</p>
+    <p>bleRPC 在 BLE GATT 之上使用分层协议栈。<strong>命令层</strong>使用 RPC 元数据封装 Protocol Buffers 载荷，可选的<strong>加密层</strong>对序列化后的命令进行加密，<strong>容器层</strong>将它们分片为 MTU 大小的数据包进行 BLE 传输。</p>
 
     <div class="flowchart">
       <script type="application/json">
@@ -79,7 +79,7 @@
     </div>
 
     <h2 id="command-layer">命令层</h2>
-    <p>命令层使用 RPC 元数据将 Protocol Buffers 编码的数据包装成 <strong>CommandPacket</strong>。命令通过名称（ASCII 字符串）标识，实现灵活、人类可读的调度。</p>
+    <p>命令层使用 RPC 元数据将 Protocol Buffers 编码的数据封装成 <strong>CommandPacket</strong>。命令通过名称（ASCII 字符串）标识，实现灵活、人类可读的调度。</p>
 
     <h3>命令格式</h3>
     <div class="packet-format-wrapper">
@@ -121,7 +121,7 @@
     <p>流式命令单独注册 &mdash; 既可以通过服务块中的流式 <code>rpc</code> 方法，也可以通过在 <code>proto/streaming.txt</code> 中列出它们（例如 <code>counter_stream p2c</code>、<code>counter_upload c2p</code>）。这些会生成专用的流式 API（参见<a href="#streaming">流式传输</a>），而非普通的请求/响应方法。</p>
 
     <h2 id="encryption-layer">加密层</h2>
-    <p>加密是<strong>可选</strong>的。当会话处于活动状态时（参见<a href="encryption.html">加密</a>），序列化的命令在交给容器层<em>之前</em>使用 AES-128-GCM 加密。加密后的载荷为 <code>[counter:4][ciphertext:N][tag:16]</code> &mdash; 共 <strong>20 字节</strong>开销（4 字节计数器 + 16 字节 GCM 标签）&mdash; 随后像明文命令一样被分割到容器中。</p>
+    <p>加密是<strong>可选</strong>的。当会话处于活动状态时（参见<a href="encryption.html">加密</a>），序列化后的命令在交给容器层<em>之前</em>会先使用 AES-128-GCM 进行加密。加密后的载荷为 <code>[counter:4][ciphertext:N][tag:16]</code> &mdash; 共 <strong>20 字节</strong>开销（4 字节计数器 + 16 字节 GCM 标签）&mdash; 随后像明文命令一样被分割到容器中。</p>
     <p>计数器同时充当 AES-GCM nonce 和重放防护。有关握手、密钥派生、nonce 构造和重放规则，请参见<a href="encryption.html">加密</a>。</p>
 
     <h2>容器层</h2>
@@ -208,8 +208,8 @@
     <div class="card">
       <p>所有通信使用<strong>单个 GATT Characteristic</strong>：</p>
       <ul>
-        <li><strong>请求</strong>：Central 通过 Write Without Response 写入</li>
-        <li><strong>响应</strong>：Peripheral 通过 Notify 发送</li>
+        <li><strong>请求</strong>：中心设备（Central）通过 Write Without Response 发送写入请求</li>
+        <li><strong>响应</strong>：外围设备（Peripheral）通过 Notify 发送</li>
       </ul>
       <p>MTU 通过 BLE ATT MTU Exchange 过程自动协商。应用程序使用协商后的 MTU（减去 3 字节 ATT 开销）来确定最大容器载荷大小</p>
       <p>默认超时为 <strong>100ms</strong>，可通过超时控制容器配置</p>
