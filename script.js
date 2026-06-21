@@ -11,7 +11,7 @@ var i18n = {
   },
   ja: {
     overview: "概要",
-    gettingStarted: "使い方",
+    gettingStarted: "クイックスタート",
     benchmarks: "ベンチマーク",
     protocol: "プロトコル",
     encryption: "暗号化",
