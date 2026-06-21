@@ -183,7 +183,7 @@ session_key   = HKDF-SHA256(
     <h2>Trust Model</h2>
     <div class="card">
       <h3>Trust On First Use (TOFU)</h3>
-      <p>On the first connection, the central accepts the peripheral&rsquo;s Ed25519 public key and stores it. On subsequent connections, the central verifies that the peripheral presents the same key. If the key changes, the connection is rejected (or the user is prompted).</p>
+      <p>On the first connection, the client pins the peripheral&rsquo;s Ed25519 public key. On every later connection it checks that the peripheral presents the same key and rejects the connection if it changed. As of the v0.7.0 client libraries this pinning is <strong>on by default and fail-closed</strong>: it runs automatically during the key exchange, and the app supplies a small key store (Android SharedPreferences, iOS UserDefaults, AsyncStorage, or a file) to persist pinned keys.</p>
       <p>This is similar to SSH&rsquo;s <code>known_hosts</code> mechanism. It provides protection against man-in-the-middle attacks after the first connection without requiring a PKI or certificate authority.</p>
     </div>
 

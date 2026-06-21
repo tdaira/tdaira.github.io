@@ -78,7 +78,7 @@ go build -o generate-handlers .</code></pre>
       <h3>Dependencies</h3>
       <p>Add to your Xcode project via Swift Package Manager:</p>
       <pre><code class="language-swift">// Package.swift or Xcode > File > Add Package Dependencies
-https://github.com/tdaira/blerpc-protocol-swift  (from: 0.5.0)
+https://github.com/tdaira/blerpc-protocol-swift  (from: 0.7.0)
 https://github.com/apple/swift-protobuf.git      (from: 1.28.0)</code></pre>
       <h3>Generate Protobuf types</h3>
       <pre><code class="language-bash">brew install swift-protobuf
@@ -115,7 +115,7 @@ client.disconnect()</code></pre>
 }
 
 dependencies {
-    implementation("com.blerpc:blerpc-protocol-kt:0.5.0")
+    implementation("com.blerpc:blerpc-protocol-kt:0.7.0")
 }</code></pre>
       <h3>Usage</h3>
       <pre><code class="language-kotlin">val client = BlerpcClient(context)
@@ -161,7 +161,7 @@ await client.disconnect()</code></pre>
       <h3>Dependencies</h3>
       <p>Add to your <code>pubspec.yaml</code>:</p>
       <pre><code class="language-yaml">dependencies:
-  blerpc_protocol: ^0.6.0
+  blerpc_protocol: ^0.7.0
   flutter_blue_plus: ^1.35.0
   protobuf: ^6.0.0</code></pre>
       <h3>Generate Protobuf types</h3>
@@ -196,6 +196,7 @@ client.disconnect();</code></pre>
     "protobufjs": "^7.4.0",
     "react-native-ble-plx": "^3.2.1",
     "react-native-get-random-values": "^1.11.0",
+    "@react-native-async-storage/async-storage": "^2.1.0",
     "buffer": "^6.0.3",
     "fast-text-encoding": "^1.0.6",
     "@noble/ciphers": "^1.3.0",

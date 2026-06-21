@@ -183,7 +183,7 @@ session_key   = HKDF-SHA256(
     <h2>信任模型</h2>
     <div class="card">
       <h3>首次使用信任 (TOFU)</h3>
-      <p>首次连接时，central 接受 peripheral 的 Ed25519 公钥并存储。在后续连接中，central 验证 peripheral 提供的是相同的密钥。如果密钥发生变化，连接将被拒绝（或提示用户）</p>
+      <p>首次连接时，客户端会固定(pin) peripheral 的 Ed25519 公钥。在之后的每次连接中，它会验证 peripheral 是否提供相同的密钥，若密钥发生变化则拒绝连接。自 v0.7.0 客户端库起，该固定<strong>默认启用且采用 fail-closed</strong>，在密钥交换期间自动执行；应用只需提供一个用于持久化已固定密钥的小型存储（Android SharedPreferences、iOS UserDefaults、AsyncStorage 或文件）。</p>
       <p>这类似于 SSH 的 <code>known_hosts</code> 机制。它在首次连接后提供中间人攻击保护，无需 PKI 或证书颁发机构</p>
     </div>
 
