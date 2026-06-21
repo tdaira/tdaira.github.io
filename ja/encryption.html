@@ -19,7 +19,7 @@
     <h1>エンドツーエンド暗号化</h1>
     <p>bleRPCは、4ステップの鍵交換ハンドシェイクとAES-128-GCMセッション暗号化によるオプションのエンドツーエンド暗号化をサポートしています。暗号化は接続確立時に合意形成が行われ、アプリケーション層では意識する必要がありません。</p>
 
-    <h2>概要</h2>
+    <h2>暗号コンポーネント</h2>
       <table>
         <thead><tr><th>コンポーネント</th><th>アルゴリズム</th></tr></thead>
         <tbody>
@@ -58,10 +58,10 @@
 {"self":"Central","label":"shared_secret = X25519(priv, peripheral_pub)"},
 {"self":"Central","label":"session_key = HKDF(shared_secret)"},
 {"self":"Central","label":"Verify signature (TOFU on first connection)"},
-{"self":"Central","label":"confirmation = encrypt(random, session_key)"},
+{"self":"Central","label":"confirmation = encrypt(\"BLERPC_CONFIRM_C\", session_key)"},
 {"from":"Central","to":"Peripheral","label":"Step 3: encrypted_confirmation (45 B)","accent":true},
 {"self":"Peripheral","label":"Decrypt confirmation, verify session_key"},
-{"self":"Peripheral","label":"confirmation = encrypt(random, session_key)"},
+{"self":"Peripheral","label":"confirmation = encrypt(\"BLERPC_CONFIRM_P\", session_key)"},
 {"from":"Peripheral","to":"Central","label":"Step 4: encrypted_confirmation (45 B)","dashed":true,"accent":true},
 {"self":"Central","label":"Decrypt confirmation, verify session_key"},
 {"note":"Session key established — all subsequent data is encrypted"}
@@ -105,12 +105,12 @@
           <div class="packet-field" style="flex:4"><div class="packet-field-name">tag</div><div class="packet-field-size">16 bytes</div></div>
         </div>
       </div>
-      <p>平文は16バイトのランダムデータで、導出されたセッション鍵とランダムな12バイトのnonceを使用してAES-128-GCMで暗号化</p>
+      <p>平文は固定された16バイトのマーカー（<code>BLERPC_CONFIRM_C</code>）で、導出されたセッション鍵とランダムな12バイトのnonceを使用してAES-128-GCMで暗号化されます。ペリフェラルはこれを復号し、期待される正確なマーカーと一致するかを確認することで、両者が同じセッション鍵を保持していることを証明します。</p>
     </div>
 
     <h3>ステップ4: Peripheral &rarr; Central (45バイト)</h3>
     <div class="card">
-      <p>ペリフェラルがステップ3を復号してセッション鍵を検証し、独自の暗号化された確認を送信</p>
+      <p>ペリフェラルがステップ3を復号し、期待される<code>BLERPC_CONFIRM_C</code>マーカーと一致することを検証した後、<code>BLERPC_CONFIRM_P</code>を含む独自の暗号化された確認を送信</p>
       <div class="packet-format-wrapper">
         <div class="packet-format">
           <div class="packet-field" style="flex:1"><div class="packet-field-name">step</div><div class="packet-field-size">1 byte</div></div>
@@ -150,11 +150,11 @@ session_key   = HKDF-SHA256(
     <h3>暗号化プロセス</h3>
     <div class="card">
       <ol>
-        <li><a href="protocol.html">CommandPacket</a>をシリアライズ（タイプ + 名前 + protobufデータ）</li>
-        <li>TXカウンターをインクリメント</li>
-        <li>12バイトのnonceを構築: <code>[counter_LE:4][direction:1][0x00:7]</code> &mdash; <code>direction</code>はCentral&rarr;Peripheralの場合<code>0</code>、Peripheral&rarr;Centralの場合<code>1</code></li>
+        <li><a href="protocol.html#command-layer">CommandPacket</a>をシリアライズ（タイプ + 名前 + protobufデータ）</li>
+        <li><strong>現在の</strong>TXカウンターから12バイトのnonceを構築: <code>[counter_LE:4][direction:1][0x00:7]</code> &mdash; <code>direction</code>はCentral&rarr;Peripheralの場合<code>0</code>、Peripheral&rarr;Centralの場合<code>1</code></li>
         <li>AES-128-GCMで暗号化: <code>ciphertext, tag = AES-GCM(session_key, nonce, plaintext)</code></li>
-        <li>カウンターをプレフィックス: <code>[counter:4][ciphertext:N][tag:16]</code></li>
+        <li>現在のカウンターをプレフィックス: <code>[counter:4][ciphertext:N][tag:16]</code></li>
+        <li>次のメッセージのためにTXカウンターをインクリメント（したがってセッション最初のメッセージはカウンター<code>0</code>を使用）</li>
         <li>通常通りコンテナに分割</li>
       </ol>
     </div>
@@ -174,7 +174,7 @@ session_key   = HKDF-SHA256(
     <div class="card">
       <p>各方向は独立した単調増加カウンターを維持します：</p>
       <ul>
-        <li><strong>TXカウンター</strong>: 暗号化の前にインクリメント。0から開始</li>
+        <li><strong>TXカウンター</strong>: 0から開始。各メッセージは現在の値で暗号化され、その後インクリメントされます &mdash; したがって最初のメッセージはカウンター0を使用します。</li>
         <li><strong>RXカウンター</strong>: 最後に受信したカウンターを追跡。最後に受信したカウンター以下のカウンターを持つメッセージは拒否されます</li>
       </ul>
       <p>これにより、攻撃者が過去にキャプチャした暗号化パケットを再送信するリプレイ攻撃を防止</p>

@@ -41,7 +41,7 @@ message FlashReadResponse {
   uint32 address = 1;
   bytes data = 2;
 }</code></pre>
-    <p>Commands are automatically discovered from matching <code>*Request</code> / <code>*Response</code> pairs. For example, <code>EchoRequest</code> + <code>EchoResponse</code> generates an <code>echo</code> command.</p>
+    <p>Commands are automatically discovered from matching <code>*Request</code> / <code>*Response</code> pairs. For example, <code>EchoRequest</code> + <code>EchoResponse</code> generates an <code>echo</code> command. You can also declare commands explicitly with a <code>service</code> block, and register streaming commands &mdash; see <a href="protocol.html#command-discovery">Command Discovery</a> in the protocol spec.</p>
 
     <h2>2. Code Generation</h2>
     <p>The <code>generate-handlers</code> tool generates handler stubs and client code for all supported languages.</p>
@@ -75,17 +75,17 @@ go build -o generate-handlers .</code></pre>
 
     <h3>iOS (Swift)</h3>
     <div class="card">
-      <h3>Dependencies</h3>
+      <h4>Dependencies</h4>
       <p>Add to your Xcode project via Swift Package Manager:</p>
       <pre><code class="language-swift">// Package.swift or Xcode > File > Add Package Dependencies
 https://github.com/tdaira/blerpc-protocol-swift  (from: 0.7.0)
 https://github.com/apple/swift-protobuf.git      (from: 1.28.0)</code></pre>
-      <h3>Generate Protobuf types</h3>
+      <h4>Generate Protobuf types</h4>
       <pre><code class="language-bash">brew install swift-protobuf
 protoc --swift_out=YourApp/Proto/ \
   --swift_opt=Visibility=Public \
   -I proto/ proto/blerpc.proto</code></pre>
-      <h3>Usage</h3>
+      <h4>Usage</h4>
       <pre><code class="language-swift">let client = BlerpcClient()
 
 // Scan for peripherals
@@ -105,7 +105,7 @@ client.disconnect()</code></pre>
 
     <h3>Android (Kotlin)</h3>
     <div class="card">
-      <h3>Dependencies</h3>
+      <h4>Dependencies</h4>
       <p>Add to your <code>build.gradle.kts</code>:</p>
       <pre><code class="language-kotlin">repositories {
     maven {
@@ -117,7 +117,7 @@ client.disconnect()</code></pre>
 dependencies {
     implementation("com.blerpc:blerpc-protocol-kt:0.7.0")
 }</code></pre>
-      <h3>Usage</h3>
+      <h4>Usage</h4>
       <pre><code class="language-kotlin">val client = BlerpcClient(context)
 
 // Scan for peripherals
@@ -132,13 +132,13 @@ client.disconnect()</code></pre>
 
     <h3>Python (macOS / Linux)</h3>
     <div class="card">
-      <h3>Dependencies</h3>
+      <h4>Dependencies</h4>
       <pre><code class="language-bash">pip install bleak protobuf
 pip install git+https://github.com/tdaira/blerpc-protocol.git</code></pre>
-      <h3>Generate Protobuf types</h3>
+      <h4>Generate Protobuf types</h4>
       <pre><code class="language-bash">protoc --python_out=central_py/blerpc/generated/ \
   -I proto/ proto/blerpc.proto</code></pre>
-      <h3>Usage</h3>
+      <h4>Usage</h4>
       <pre><code class="language-python">from blerpc.client import BlerpcClient
 
 client = BlerpcClient()
@@ -158,17 +158,17 @@ await client.disconnect()</code></pre>
 
     <h3>Flutter (Dart)</h3>
     <div class="card">
-      <h3>Dependencies</h3>
+      <h4>Dependencies</h4>
       <p>Add to your <code>pubspec.yaml</code>:</p>
       <pre><code class="language-yaml">dependencies:
   blerpc_protocol: ^0.7.0
   flutter_blue_plus: ^1.35.0
   protobuf: ^6.0.0</code></pre>
-      <h3>Generate Protobuf types</h3>
+      <h4>Generate Protobuf types</h4>
       <pre><code class="language-bash">dart pub global activate protoc_plugin
 protoc --dart_out=lib/proto/ \
   -I proto/ proto/blerpc.proto</code></pre>
-      <h3>Usage</h3>
+      <h4>Usage</h4>
       <pre><code class="language-dart">final client = BlerpcClient();
 
 // Scan for peripherals
@@ -188,11 +188,11 @@ client.disconnect();</code></pre>
 
     <h3>React Native (TypeScript)</h3>
     <div class="card">
-      <h3>Dependencies</h3>
+      <h4>Dependencies</h4>
       <p>Add to your <code>package.json</code>:</p>
       <pre><code class="language-json">{
   "dependencies": {
-    "@blerpc/protocol-rn": "file:../blerpc-protocol-rn",
+    "@blerpc/protocol-rn": "github:tdaira/blerpc-protocol-rn",
     "protobufjs": "^7.4.0",
     "react-native-ble-plx": "^3.2.1",
     "react-native-get-random-values": "^1.11.0",
@@ -204,17 +204,17 @@ client.disconnect();</code></pre>
     "@noble/hashes": "^1.8.0"
   }
 }</code></pre>
-      <h3>Generate Protobuf types</h3>
+      <h4>Generate Protobuf types</h4>
       <pre><code class="language-bash">npx pbjs -t static-module -w commonjs \
   -o src/proto/blerpc.js ../proto/blerpc.proto
 npx pbts -o src/proto/blerpc.d.ts src/proto/blerpc.js</code></pre>
-      <h3>Usage</h3>
+      <h4>Usage</h4>
       <pre><code class="language-typescript">import { BlerpcClient } from './client/BlerpcClient';
-import { BleTransport } from './ble/BleTransport';
 
-const transport = new BleTransport();
-const devices = await transport.scan();
-const client = new BlerpcClient(transport);
+const client = new BlerpcClient();
+
+// Scan for peripherals
+const devices = await client.scan();
 await client.connect(devices[0]);
 
 // Type-safe RPC call
@@ -230,7 +230,7 @@ client.disconnect();</code></pre>
 
     <h3>Zephyr Central (C)</h3>
     <div class="card">
-      <h3>Generated Client</h3>
+      <h4>Generated Client</h4>
       <p>The code generator creates <code>generated_client.h</code> and <code>generated_client.c</code> with typed wrapper functions for all commands. You implement three transport functions (<code>blerpc_rpc_call</code>, <code>blerpc_stream_receive</code>, <code>blerpc_stream_send</code>) and call the generated API:</p>
       <pre><code class="language-c">#include "generated_client.h"
 
@@ -251,13 +251,13 @@ ret = blerpc_flash_read(0, 8192, &amp;flash, data_buf, sizeof(data_buf), &amp;da
 blerpc_CounterStreamResponse results[20];
 size_t count;
 ret = blerpc_counter_stream(20, results, 20, &amp;count);</code></pre>
-      <h3>Build</h3>
+      <h4>Build</h4>
       <pre><code class="language-bash">west build -b nrf54l15dk/nrf54l15/cpuapp central_fw</code></pre>
     </div>
 
     <h3>Zephyr Peripheral (C)</h3>
     <div class="card">
-      <h3>Implement handlers</h3>
+      <h4>Implement handlers</h4>
       <p>The generated handlers are <code>__attribute__((weak))</code>. Override them in your own source file:</p>
       <pre><code class="language-c">// handlers.c
 #include "generated_handlers.h"
@@ -276,7 +276,7 @@ int handle_echo(const uint8_t *req_data, size_t req_len,
         return -1;
     return 0;
 }</code></pre>
-      <h3>Build</h3>
+      <h4>Build</h4>
       <pre><code class="language-bash"># nRF54L15
 west build -b nrf54l15dk/nrf54l15/cpuapp peripheral_fw
 

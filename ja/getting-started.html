@@ -41,7 +41,7 @@ message FlashReadResponse {
   uint32 address = 1;
   bytes data = 2;
 }</code></pre>
-    <p>コマンドは<code>*Request</code> / <code>*Response</code>のペアから自動的に検出されます。例えば、<code>EchoRequest</code> + <code>EchoResponse</code>から<code>echo</code>コマンドが生成されます。</p>
+    <p>コマンドは<code>*Request</code> / <code>*Response</code>のペアから自動的に検出されます。例えば、<code>EchoRequest</code> + <code>EchoResponse</code>から<code>echo</code>コマンドが生成されます。<code>service</code>ブロックでコマンドを明示的に宣言したり、ストリーミングコマンドを登録したりすることもできます &mdash; プロトコル仕様の<a href="protocol.html#command-discovery">コマンド検出</a>を参照してください。</p>
 
     <h2>2. コード生成</h2>
     <p><code>generate-handlers</code>ツールは、対応するすべての言語のハンドラースタブとクライアントコードを生成します。</p>
@@ -75,17 +75,17 @@ go build -o generate-handlers .</code></pre>
 
     <h3>iOS (Swift)</h3>
     <div class="card">
-      <h3>依存関係</h3>
+      <h4>依存関係</h4>
       <p>Swift Package Managerを使ってXcodeプロジェクトに追加します：</p>
       <pre><code class="language-swift">// Package.swift or Xcode > File > Add Package Dependencies
 https://github.com/tdaira/blerpc-protocol-swift  (from: 0.7.0)
 https://github.com/apple/swift-protobuf.git      (from: 1.28.0)</code></pre>
-      <h3>Protobuf型の生成</h3>
+      <h4>Protobuf型の生成</h4>
       <pre><code class="language-bash">brew install swift-protobuf
 protoc --swift_out=YourApp/Proto/ \
   --swift_opt=Visibility=Public \
   -I proto/ proto/blerpc.proto</code></pre>
-      <h3>使い方</h3>
+      <h4>使い方</h4>
       <pre><code class="language-swift">let client = BlerpcClient()
 
 // ペリフェラルをスキャン
@@ -105,7 +105,7 @@ client.disconnect()</code></pre>
 
     <h3>Android (Kotlin)</h3>
     <div class="card">
-      <h3>依存関係</h3>
+      <h4>依存関係</h4>
       <p><code>build.gradle.kts</code>に追加します：</p>
       <pre><code class="language-kotlin">repositories {
     maven {
@@ -117,7 +117,7 @@ client.disconnect()</code></pre>
 dependencies {
     implementation("com.blerpc:blerpc-protocol-kt:0.7.0")
 }</code></pre>
-      <h3>使い方</h3>
+      <h4>使い方</h4>
       <pre><code class="language-kotlin">val client = BlerpcClient(context)
 
 // ペリフェラルをスキャン
@@ -132,13 +132,13 @@ client.disconnect()</code></pre>
 
     <h3>Python (macOS / Linux)</h3>
     <div class="card">
-      <h3>依存関係</h3>
+      <h4>依存関係</h4>
       <pre><code class="language-bash">pip install bleak protobuf
 pip install git+https://github.com/tdaira/blerpc-protocol.git</code></pre>
-      <h3>Protobuf型の生成</h3>
+      <h4>Protobuf型の生成</h4>
       <pre><code class="language-bash">protoc --python_out=central_py/blerpc/generated/ \
   -I proto/ proto/blerpc.proto</code></pre>
-      <h3>使い方</h3>
+      <h4>使い方</h4>
       <pre><code class="language-python">from blerpc.client import BlerpcClient
 
 client = BlerpcClient()
@@ -158,17 +158,17 @@ await client.disconnect()</code></pre>
 
     <h3>Flutter (Dart)</h3>
     <div class="card">
-      <h3>依存関係</h3>
+      <h4>依存関係</h4>
       <p><code>pubspec.yaml</code>に追加します：</p>
       <pre><code class="language-yaml">dependencies:
   blerpc_protocol: ^0.7.0
   flutter_blue_plus: ^1.35.0
   protobuf: ^6.0.0</code></pre>
-      <h3>Protobuf型の生成</h3>
+      <h4>Protobuf型の生成</h4>
       <pre><code class="language-bash">dart pub global activate protoc_plugin
 protoc --dart_out=lib/proto/ \
   -I proto/ proto/blerpc.proto</code></pre>
-      <h3>使い方</h3>
+      <h4>使い方</h4>
       <pre><code class="language-dart">final client = BlerpcClient();
 
 // ペリフェラルをスキャン
@@ -188,11 +188,11 @@ client.disconnect();</code></pre>
 
     <h3>React Native (TypeScript)</h3>
     <div class="card">
-      <h3>依存関係</h3>
+      <h4>依存関係</h4>
       <p><code>package.json</code>に追加します：</p>
       <pre><code class="language-json">{
   "dependencies": {
-    "@blerpc/protocol-rn": "file:../blerpc-protocol-rn",
+    "@blerpc/protocol-rn": "github:tdaira/blerpc-protocol-rn",
     "protobufjs": "^7.4.0",
     "react-native-ble-plx": "^3.2.1",
     "react-native-get-random-values": "^1.11.0",
@@ -204,17 +204,17 @@ client.disconnect();</code></pre>
     "@noble/hashes": "^1.8.0"
   }
 }</code></pre>
-      <h3>Protobuf型の生成</h3>
+      <h4>Protobuf型の生成</h4>
       <pre><code class="language-bash">npx pbjs -t static-module -w commonjs \
   -o src/proto/blerpc.js ../proto/blerpc.proto
 npx pbts -o src/proto/blerpc.d.ts src/proto/blerpc.js</code></pre>
-      <h3>使い方</h3>
+      <h4>使い方</h4>
       <pre><code class="language-typescript">import { BlerpcClient } from './client/BlerpcClient';
-import { BleTransport } from './ble/BleTransport';
 
-const transport = new BleTransport();
-const devices = await transport.scan();
-const client = new BlerpcClient(transport);
+const client = new BlerpcClient();
+
+// ペリフェラルをスキャン
+const devices = await client.scan();
 await client.connect(devices[0]);
 
 // 型安全なRPC呼び出し
@@ -230,7 +230,7 @@ client.disconnect();</code></pre>
 
     <h3>Zephyr Central (C)</h3>
     <div class="card">
-      <h3>生成されたクライアント</h3>
+      <h4>生成されたクライアント</h4>
       <p>コードジェネレーターは、すべてのコマンドに対する型付きラッパー関数を持つ<code>generated_client.h</code>と<code>generated_client.c</code>を生成します。3つのトランスポート関数（<code>blerpc_rpc_call</code>、<code>blerpc_stream_receive</code>、<code>blerpc_stream_send</code>）を実装し、生成されたAPIを呼び出します：</p>
       <pre><code class="language-c">#include "generated_client.h"
 
@@ -251,13 +251,13 @@ ret = blerpc_flash_read(0, 8192, &amp;flash, data_buf, sizeof(data_buf), &amp;da
 blerpc_CounterStreamResponse results[20];
 size_t count;
 ret = blerpc_counter_stream(20, results, 20, &amp;count);</code></pre>
-      <h3>ビルド</h3>
+      <h4>ビルド</h4>
       <pre><code class="language-bash">west build -b nrf54l15dk/nrf54l15/cpuapp central_fw</code></pre>
     </div>
 
     <h3>Zephyr Peripheral (C)</h3>
     <div class="card">
-      <h3>ハンドラーの実装</h3>
+      <h4>ハンドラーの実装</h4>
       <p>生成されたハンドラーは<code>__attribute__((weak))</code>です。独自のソースファイルでオーバーライドします：</p>
       <pre><code class="language-c">// handlers.c
 #include "generated_handlers.h"
@@ -276,7 +276,7 @@ int handle_echo(const uint8_t *req_data, size_t req_len,
         return -1;
     return 0;
 }</code></pre>
-      <h3>ビルド</h3>
+      <h4>ビルド</h4>
       <pre><code class="language-bash"># nRF54L15
 west build -b nrf54l15dk/nrf54l15/cpuapp peripheral_fw
 

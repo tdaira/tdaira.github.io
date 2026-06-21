@@ -31,16 +31,75 @@
       </script>
     </div>
 
-    <h2>BLE Transport</h2>
-    <div class="card">
-      <p>All communication uses a <strong>single GATT Characteristic</strong>:</p>
-      <ul>
-        <li><strong>Requests</strong>: Central writes via Write Without Response</li>
-        <li><strong>Responses</strong>: Peripheral sends via Notify</li>
-      </ul>
-      <p>MTU is negotiated automatically via the BLE ATT MTU Exchange procedure. The application uses the negotiated MTU (minus 3 bytes ATT overhead) to determine the maximum container payload size.</p>
-      <p>Default timeout is <strong>100ms</strong>, configurable via the timeout control container.</p>
+    <h2>Connection Setup Sequence</h2>
+    <p>Before any RPC calls, a central runs a short setup sequence with the peripheral. This is the overall timeline &mdash; each step is detailed in the sections below (and in <a href="encryption.html">Encryption</a> for the key exchange).</p>
+    <div class="seqdiag">
+      <script type="application/json">
+{"minWidth":640,"actors":["Central","Peripheral"],"messages":[
+{"from":"Central","to":"Peripheral","label":"BLE Connect","accent":true},
+{"from":"Central","to":"Peripheral","label":"MTU Exchange","accent":true},
+{"from":"Central","to":"Peripheral","label":"Discover Services","accent":true},
+{"from":"Central","to":"Peripheral","label":"Enable Notifications","accent":true},
+{"from":"Central","to":"Peripheral","label":"Timeout Request (ctrl)","accent":true},
+{"from":"Peripheral","to":"Central","label":"Timeout Response (e.g. 100ms)","dashed":true},
+{"from":"Central","to":"Peripheral","label":"Capability Request (ctrl)","accent":true},
+{"from":"Peripheral","to":"Central","label":"Capability Response (max_req, max_resp, flags)","dashed":true},
+{"note":"Optional — when encryption is enabled (flags & 0x01)"},
+{"from":"Central","to":"Peripheral","label":"Key Exchange Step 1 (ctrl 0x6)","accent":true},
+{"from":"Peripheral","to":"Central","label":"Key Exchange Step 2 (ctrl 0x6)","dashed":true},
+{"from":"Central","to":"Peripheral","label":"Key Exchange Step 3 (ctrl 0x6)","accent":true},
+{"from":"Peripheral","to":"Central","label":"Key Exchange Step 4 (ctrl 0x6)","dashed":true},
+{"note":"AES-128-GCM session established"},
+{"note":"Ready for RPC calls"}
+]}
+      </script>
     </div>
+
+    <h2 id="command-layer">Command Layer</h2>
+    <p>The command layer wraps Protocol Buffers-encoded data with RPC metadata into a <strong>CommandPacket</strong>. Commands are identified by name (ASCII string), enabling flexible, human-readable dispatch.</p>
+
+    <h3>Command Format</h3>
+    <div class="packet-format-wrapper">
+      <div class="packet-format">
+        <div class="packet-field" style="flex:1"><div class="packet-field-name">T</div><div class="packet-field-size">1 bit</div></div>
+        <div class="packet-field" style="flex:7"><div class="packet-field-name">reserved</div><div class="packet-field-size">7 bits</div></div>
+        <div class="packet-field" style="flex:8"><div class="packet-field-name">cmd_name_len</div><div class="packet-field-size">8 bits</div></div>
+        <div class="packet-field" style="flex:16"><div class="packet-field-name">cmd_name</div><div class="packet-field-size">variable</div></div>
+        <div class="packet-field" style="flex:16"><div class="packet-field-name">data_len</div><div class="packet-field-size">16 bits (LE)</div></div>
+        <div class="packet-field packet-field-var" style="flex:16"><div class="packet-field-name">data</div><div class="packet-field-size">variable</div></div>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>Field</th><th>Bits</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>type</code></td><td>1</td><td><code>0</code> = request, <code>1</code> = response</td></tr>
+        <tr><td><code>reserved</code></td><td>7</td><td>Zero-filled</td></tr>
+        <tr><td><code>cmd_name_len</code></td><td>8</td><td>Length of the command name in bytes</td></tr>
+        <tr><td><code>cmd_name</code></td><td>variable</td><td>ASCII command name (e.g., <code>echo</code>, <code>flash_read</code>)</td></tr>
+        <tr><td><code>data_len</code></td><td>16</td><td>Length of the protobuf data (bytes, little-endian)</td></tr>
+        <tr><td><code>data</code></td><td>variable</td><td>Protocol Buffers encoded payload</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="command-discovery">Command Discovery</h3>
+    <p>The code generator derives commands from your <code>.proto</code> file in one of two ways:</p>
+    <ul>
+      <li><strong>Service definitions (preferred)</strong> &mdash; if the file declares a <code>service { ... }</code> block, each <code>rpc</code> method becomes a command. The command name is the method name in <code>snake_case</code>, and its request/response types are taken from the method signature.</li>
+      <li><strong>Naming convention (fallback)</strong> &mdash; when no service is defined, matching <code>*Request</code> / <code>*Response</code> message pairs produce a command whose name is the prefix converted to <code>snake_case</code>:</li>
+    </ul>
+    <table>
+      <thead><tr><th>Message Pair</th><th>Command Name</th></tr></thead>
+      <tbody>
+        <tr><td><code>EchoRequest</code> + <code>EchoResponse</code></td><td><code>echo</code></td></tr>
+        <tr><td><code>FlashReadRequest</code> + <code>FlashReadResponse</code></td><td><code>flash_read</code></td></tr>
+        <tr><td><code>DataWriteRequest</code> + <code>DataWriteResponse</code></td><td><code>data_write</code></td></tr>
+      </tbody>
+    </table>
+    <p>Streaming commands are registered separately &mdash; either via streaming <code>rpc</code> methods in a service block, or by listing them in <code>proto/streaming.txt</code> (e.g. <code>counter_stream p2c</code>, <code>counter_upload c2p</code>). These generate dedicated streaming APIs (see <a href="#streaming">Streaming</a>) instead of a plain request/response method.</p>
+
+    <h2 id="encryption-layer">Encryption Layer</h2>
+    <p>Encryption is <strong>optional</strong>. When a session is active (see <a href="encryption.html">Encryption</a>), the serialized command is encrypted with AES-128-GCM <em>before</em> it is handed to the container layer. The encrypted payload is <code>[counter:4][ciphertext:N][tag:16]</code> &mdash; a <strong>20-byte</strong> overhead (4-byte counter + 16-byte GCM tag) &mdash; which is then split into containers exactly like a plaintext command.</p>
+    <p>The counter doubles as the AES-GCM nonce and as a replay guard. See <a href="encryption.html">Encryption</a> for the handshake, key derivation, nonce construction, and replay rules.</p>
 
     <h2>Container Layer</h2>
     <p>The container layer splits large payloads into MTU-sized packets and reassembles them on the receiving side. Each container carries a transaction ID and sequence number for tracking and ordering.</p>
@@ -55,8 +114,8 @@
         <div class="packet-field" style="flex:8"><div class="packet-field-name">transaction_id</div><div class="packet-field-size">8 bits</div></div>
         <div class="packet-field" style="flex:8"><div class="packet-field-name">sequence_number</div><div class="packet-field-size">8 bits</div></div>
         <div class="packet-field" style="flex:2"><div class="packet-field-name">type</div><div class="packet-field-size">2</div></div>
-        <div class="packet-field" style="flex:4"><div class="packet-field-name">ctrl_cmd</div><div class="packet-field-size">4</div></div>
-        <div class="packet-field" style="flex:2"><div class="packet-field-name">rsv</div><div class="packet-field-size">2</div></div>
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">control_cmd</div><div class="packet-field-size">4</div></div>
+        <div class="packet-field" style="flex:2"><div class="packet-field-name">reserved</div><div class="packet-field-size">2</div></div>
         <div class="packet-field" style="flex:16"><div class="packet-field-name">total_length</div><div class="packet-field-size">16 bits (LE)</div></div>
         <div class="packet-field" style="flex:8"><div class="packet-field-name">payload_len</div><div class="packet-field-size">8 bits</div></div>
         <div class="packet-field packet-field-var" style="flex:14"><div class="packet-field-name">payload</div><div class="packet-field-size">variable</div></div>
@@ -84,8 +143,8 @@
         <div class="packet-field" style="flex:8"><div class="packet-field-name">transaction_id</div><div class="packet-field-size">8 bits</div></div>
         <div class="packet-field" style="flex:8"><div class="packet-field-name">sequence_number</div><div class="packet-field-size">8 bits</div></div>
         <div class="packet-field" style="flex:2"><div class="packet-field-name">type</div><div class="packet-field-size">2</div></div>
-        <div class="packet-field" style="flex:4"><div class="packet-field-name">ctrl_cmd</div><div class="packet-field-size">4</div></div>
-        <div class="packet-field" style="flex:2"><div class="packet-field-name">rsv</div><div class="packet-field-size">2</div></div>
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">control_cmd</div><div class="packet-field-size">4</div></div>
+        <div class="packet-field" style="flex:2"><div class="packet-field-name">reserved</div><div class="packet-field-size">2</div></div>
         <div class="packet-field" style="flex:8"><div class="packet-field-name">payload_len</div><div class="packet-field-size">8 bits</div></div>
         <div class="packet-field packet-field-var" style="flex:14"><div class="packet-field-name">payload</div><div class="packet-field-size">variable</div></div>
       </div>
@@ -120,14 +179,47 @@
       <p style="margin-bottom:0">Total payload: <strong>500 bytes</strong> (238 + 240 + 22)</p>
 
     <h3>Maximum Payload</h3>
-    <p>The <code>sequence_number</code> is 8 bits, limiting a single transaction to ~255 containers. With a typical MTU of 247 (240 bytes per subsequent container), the practical maximum payload per transaction is approximately <strong>60 KB</strong>. For larger transfers, use multiple request/response cycles.</p>
+    <p>Two limits bound a single transaction. The <code>sequence_number</code> is 8 bits, capping it at ~255 containers; with a typical MTU of 247 (240 bytes per subsequent container) that is a practical maximum of approximately <strong>60 KB</strong>. The 16-bit <code>total_length</code> field also imposes an absolute ceiling of <strong>65,535 bytes</strong>. For larger transfers, use multiple request/response cycles.</p>
+
+    <h2>BLE Transport</h2>
+    <div class="card">
+      <p>All communication uses a <strong>single GATT Characteristic</strong>:</p>
+      <ul>
+        <li><strong>Requests</strong>: Central writes via Write Without Response</li>
+        <li><strong>Responses</strong>: Peripheral sends via Notify</li>
+      </ul>
+      <p>MTU is negotiated automatically via the BLE ATT MTU Exchange procedure. The application uses the negotiated MTU (minus 3 bytes ATT overhead) to determine the maximum container payload size.</p>
+      <p>Default timeout is <strong>100ms</strong>, configurable via the timeout control container.</p>
+    </div>
+
+    <h2>Request/Response Flow</h2>
+    <p>A complete RPC call involves encoding at the command layer, splitting at the container layer, BLE transmission, and the reverse on the receiving side:</p>
+
+    <div class="seqdiag">
+      <script type="application/json">
+{"minWidth":520,"actors":["Central","Peripheral"],"messages":[
+{"self":"Central","label":"1. Protobuf encode request"},
+{"self":"Central","label":"2. Wrap in command header"},
+{"self":"Central","label":"3. Split into containers"},
+{"from":"Central","to":"Peripheral","label":"Write Without Response (FIRST)","accent":true},
+{"from":"Central","to":"Peripheral","label":"Write Without Response (SUBSEQUENT...)","accent":true},
+{"self":"Peripheral","label":"4. Reassemble containers"},
+{"self":"Peripheral","label":"5. Decode command + Protobuf"},
+{"self":"Peripheral","label":"6. Execute handler"},
+{"self":"Peripheral","label":"7. Encode response + split"},
+{"from":"Peripheral","to":"Central","label":"Notify (FIRST)","dashed":true,"accent":true},
+{"from":"Peripheral","to":"Central","label":"Notify (SUBSEQUENT...)","dashed":true,"accent":true},
+{"self":"Central","label":"8. Reassemble + decode response"}
+]}
+      </script>
+    </div>
 
     <h2>Control Containers</h2>
     <p>Control containers (<code>type=0b11</code>) carry protocol-level commands instead of application data.</p>
 
     <h3>Timeout Sharing (control_cmd=0x1)</h3>
     <p>Allows the peripheral to communicate its processing timeout to the central.</p>
-      <h3>Request (Central &rarr; Peripheral)</h3>
+      <h4>Request (Central &rarr; Peripheral)</h4>
       <table>
         <thead><tr><th>Field</th><th>Value</th></tr></thead>
         <tbody>
@@ -136,7 +228,7 @@
           <tr><td>payload_len</td><td><code>0x00</code></td></tr>
         </tbody>
       </table>
-      <h3>Response (Peripheral &rarr; Central)</h3>
+      <h4>Response (Peripheral &rarr; Central)</h4>
       <table>
         <thead><tr><th>Field</th><th>Value</th></tr></thead>
         <tbody>
@@ -149,7 +241,7 @@
 
     <h3>Capability Sharing (control_cmd=0x4)</h3>
     <p>Allows the peripheral to communicate its buffer constraints and feature flags to the central.</p>
-      <h3>Request (Central &rarr; Peripheral)</h3>
+      <h4>Request (Central &rarr; Peripheral)</h4>
       <table>
         <thead><tr><th>Field</th><th>Value</th></tr></thead>
         <tbody>
@@ -161,7 +253,7 @@
           <tr><td>payload[4:6]</td><td><code>flags</code> (16-bit LE, typically 0)</td></tr>
         </tbody>
       </table>
-      <h3>Response (Peripheral &rarr; Central)</h3>
+      <h4>Response (Peripheral &rarr; Central)</h4>
       <table>
         <thead><tr><th>Field</th><th>Value</th></tr></thead>
         <tbody>
@@ -173,7 +265,7 @@
           <tr><td>payload[4:6]</td><td><code>flags</code> (16-bit LE) &mdash; bit 0: encryption supported</td></tr>
         </tbody>
       </table>
-      <p>When <code>flags</code> is absent (4-byte payload for backward compatibility), no optional features are available.</p>
+      <p>The capabilities payload is always 6 bytes. A peripheral with no optional features simply reports <code>flags = 0x0000</code>.</p>
 
     <h3>Stream End (control_cmd=0x2, 0x3)</h3>
     <p>Signals the end of a streaming sequence. Either side can terminate a stream.</p>
@@ -200,6 +292,7 @@
       <p>Error codes:</p>
       <ul>
         <li><code>0x01</code> &mdash; <strong>RESPONSE_TOO_LARGE</strong>: Response payload exceeds <code>max_response_payload_size</code></li>
+        <li><code>0x02</code> &mdash; <strong>BUSY</strong>: The peripheral has no free request slot (it is still handling another transaction); the central should retry</li>
       </ul>
 
     <h3>Key Exchange (control_cmd=0x6)</h3>
@@ -215,85 +308,7 @@
       </table>
       <p>Four containers are exchanged (Step 1&ndash;4) to complete the handshake. After completion, all subsequent data containers carry encrypted payloads.</p>
 
-    <h3>Encrypted Data Container</h3>
-    <p>When encryption is active, the payload of data containers (FIRST / SUBSEQUENT) is replaced by the encrypted form of the serialized command:</p>
-    <div class="packet-format-wrapper">
-      <div class="packet-format">
-        <div class="packet-field" style="flex:4"><div class="packet-field-name">counter</div><div class="packet-field-size">32 bits (LE)</div></div>
-        <div class="packet-field packet-field-var" style="flex:10"><div class="packet-field-name">ciphertext</div><div class="packet-field-size">variable</div></div>
-        <div class="packet-field" style="flex:4"><div class="packet-field-name">tag</div><div class="packet-field-size">128 bits</div></div>
-      </div>
-    </div>
-    <table>
-      <thead><tr><th>Field</th><th>Size</th><th>Description</th></tr></thead>
-      <tbody>
-        <tr><td><code>counter</code></td><td>4 bytes</td><td>Monotonically increasing counter (little-endian). Used as AES-GCM nonce and for replay detection.</td></tr>
-        <tr><td><code>ciphertext</code></td><td>N bytes</td><td>AES-128-GCM encrypted serialized command</td></tr>
-        <tr><td><code>tag</code></td><td>16 bytes</td><td>AES-GCM authentication tag</td></tr>
-      </tbody>
-    </table>
-    <p>Total overhead: <strong>20 bytes</strong> (4 counter + 16 tag). The ciphertext is then split into containers as usual.</p>
-
-    <h2>Command Layer</h2>
-    <p>The command layer wraps Protocol Buffers-encoded data with RPC metadata. Commands are identified by name (ASCII string), enabling flexible, human-readable dispatch.</p>
-
-    <h3>Command Format</h3>
-    <div class="packet-format-wrapper">
-      <div class="packet-format">
-        <div class="packet-field" style="flex:1"><div class="packet-field-name">T</div><div class="packet-field-size">1 bit</div></div>
-        <div class="packet-field" style="flex:7"><div class="packet-field-name">reserved</div><div class="packet-field-size">7 bits</div></div>
-        <div class="packet-field" style="flex:8"><div class="packet-field-name">cmd_name_len</div><div class="packet-field-size">8 bits</div></div>
-        <div class="packet-field" style="flex:16"><div class="packet-field-name">cmd_name</div><div class="packet-field-size">variable</div></div>
-        <div class="packet-field" style="flex:16"><div class="packet-field-name">data_len</div><div class="packet-field-size">16 bits (LE)</div></div>
-        <div class="packet-field packet-field-var" style="flex:16"><div class="packet-field-name">data</div><div class="packet-field-size">variable</div></div>
-      </div>
-    </div>
-    <table>
-      <thead><tr><th>Field</th><th>Bits</th><th>Description</th></tr></thead>
-      <tbody>
-        <tr><td><code>type</code></td><td>1</td><td><code>0</code> = request, <code>1</code> = response</td></tr>
-        <tr><td><code>reserved</code></td><td>7</td><td>Zero-filled</td></tr>
-        <tr><td><code>cmd_name_len</code></td><td>8</td><td>Length of the command name in bytes</td></tr>
-        <tr><td><code>cmd_name</code></td><td>variable</td><td>ASCII command name (e.g., <code>echo</code>, <code>flash_read</code>)</td></tr>
-        <tr><td><code>data_len</code></td><td>16</td><td>Length of the protobuf data (bytes, little-endian)</td></tr>
-        <tr><td><code>data</code></td><td>variable</td><td>Protocol Buffers encoded payload</td></tr>
-      </tbody>
-    </table>
-
-    <h3>Command Discovery</h3>
-    <p>Commands are automatically generated from <code>.proto</code> file definitions. Matching <code>*Request</code> / <code>*Response</code> message pairs produce a command whose name is the prefix converted to <code>snake_case</code>:</p>
-    <table>
-      <thead><tr><th>Message Pair</th><th>Command Name</th></tr></thead>
-      <tbody>
-        <tr><td><code>EchoRequest</code> + <code>EchoResponse</code></td><td><code>echo</code></td></tr>
-        <tr><td><code>FlashReadRequest</code> + <code>FlashReadResponse</code></td><td><code>flash_read</code></td></tr>
-        <tr><td><code>DataWriteRequest</code> + <code>DataWriteResponse</code></td><td><code>data_write</code></td></tr>
-      </tbody>
-    </table>
-
-    <h2>Request/Response Flow</h2>
-    <p>A complete RPC call involves encoding at the command layer, splitting at the container layer, BLE transmission, and the reverse on the receiving side:</p>
-
-    <div class="seqdiag">
-      <script type="application/json">
-{"minWidth":520,"actors":["Central","Peripheral"],"messages":[
-{"self":"Central","label":"1. Protobuf encode request"},
-{"self":"Central","label":"2. Wrap in command header"},
-{"self":"Central","label":"3. Split into containers"},
-{"from":"Central","to":"Peripheral","label":"Write Without Response (FIRST)","accent":true},
-{"from":"Central","to":"Peripheral","label":"Write Without Response (SUBSEQUENT...)","accent":true},
-{"self":"Peripheral","label":"4. Reassemble containers"},
-{"self":"Peripheral","label":"5. Decode command + Protobuf"},
-{"self":"Peripheral","label":"6. Execute handler"},
-{"self":"Peripheral","label":"7. Encode response + split"},
-{"from":"Peripheral","to":"Central","label":"Notify (FIRST)","dashed":true,"accent":true},
-{"from":"Peripheral","to":"Central","label":"Notify (SUBSEQUENT...)","dashed":true,"accent":true},
-{"self":"Central","label":"8. Reassemble + decode response"}
-]}
-      </script>
-    </div>
-
-    <h2>Streaming</h2>
+    <h2 id="streaming">Streaming</h2>
     <p>bleRPC supports two streaming patterns beyond simple request/response:</p>
 
     <h3>Peripheral &rarr; Central Stream (Server Streaming)</h3>
@@ -320,30 +335,6 @@
 {"from":"Central","to":"Peripheral","label":"Request 3","accent":true},
 {"from":"Central","to":"Peripheral","label":"STREAM_END_C2P (control)","dashed":true,"accent":true},
 {"from":"Peripheral","to":"Central","label":"Final Response (Notify)","dashed":true}
-]}
-      </script>
-    </div>
-
-    <h2>Connection Setup Sequence</h2>
-    <p>When a central connects to a peripheral, it performs these initialization steps:</p>
-    <div class="seqdiag">
-      <script type="application/json">
-{"minWidth":640,"actors":["Central","Peripheral"],"messages":[
-{"from":"Central","to":"Peripheral","label":"BLE Connect","accent":true},
-{"from":"Central","to":"Peripheral","label":"MTU Exchange","accent":true},
-{"from":"Central","to":"Peripheral","label":"Discover Services","accent":true},
-{"from":"Central","to":"Peripheral","label":"Enable Notifications","accent":true},
-{"from":"Central","to":"Peripheral","label":"Timeout Request (ctrl)","accent":true},
-{"from":"Peripheral","to":"Central","label":"Timeout Response (e.g. 100ms)","dashed":true},
-{"from":"Central","to":"Peripheral","label":"Capability Request (ctrl)","accent":true},
-{"from":"Peripheral","to":"Central","label":"Capability Response (max_req, max_resp, flags)","dashed":true},
-{"note":"Optional — when encryption is enabled (flags & 0x01)"},
-{"from":"Central","to":"Peripheral","label":"Key Exchange Step 1 (ctrl 0x6)","accent":true},
-{"from":"Peripheral","to":"Central","label":"Key Exchange Step 2 (ctrl 0x6)","dashed":true},
-{"from":"Central","to":"Peripheral","label":"Key Exchange Step 3 (ctrl 0x6)","accent":true},
-{"from":"Peripheral","to":"Central","label":"Key Exchange Step 4 (ctrl 0x6)","dashed":true},
-{"note":"AES-128-GCM session established"},
-{"note":"Ready for RPC calls"}
 ]}
       </script>
     </div>

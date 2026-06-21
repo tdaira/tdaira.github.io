@@ -25,13 +25,13 @@
   {
     "@context": "https://schema.org",
     "@type": "SiteNavigationElement",
-    "name": ["概述", "快速开始", "基准测试", "协议", "加密", "仓库"],
+    "name": ["概述", "协议", "加密", "快速开始", "基准测试", "仓库"],
     "url": [
       "https://blerpc.net/zh/index.html",
-      "https://blerpc.net/zh/getting-started.html",
-      "https://blerpc.net/zh/benchmarks.html",
       "https://blerpc.net/zh/protocol.html",
       "https://blerpc.net/zh/encryption.html",
+      "https://blerpc.net/zh/getting-started.html",
+      "https://blerpc.net/zh/benchmarks.html",
       "https://blerpc.net/zh/repositories.html"
     ]
   }
@@ -46,7 +46,7 @@
       <div class="hero-glow"></div>
       <div class="hero-grid">
         <div class="hero-copy">
-          <span class="badge-pill"><span class="status-dot"></span> LGPL-3.0 &middot; 开源</span>
+          <span class="badge-pill"><span class="status-dot"></span> Apache-2.0 &middot; 开源</span>
           <h1>Type-safe RPC over<br><span class="accent">Bluetooth Low Energy</span></h1>
           <p class="hero-lead">只需用 Protocol Buffers 定义一次设备 API，bleRPC 即可为六大平台生成类型安全的客户端与处理程序，内置 MTU 感知分片和可选的端到端加密。</p>
           <div class="hero-actions">
@@ -88,7 +88,7 @@ println(res.message)  // "hello"</code></pre></div>
 await client.connect(devices[0]);
 final res = await client.echo(message: 'hello');
 print(res.message);  // "hello"</code></pre></div>
-            <div class="codegen-panel" data-lang="typescript"><pre><code class="language-typescript">const client = new BlerpcClient(transport)
+            <div class="codegen-panel" data-lang="typescript"><pre><code class="language-typescript">const client = new BlerpcClient()
 await client.connect(devices[0])
 const res = await client.echo({ message: 'hello' })
 console.log(res.message)  // "hello"</code></pre></div>
@@ -181,6 +181,8 @@ if (ret == 0)
 ]}
       </script>
     </div>
+
+    <p style="margin-top:1.25rem"><a href="protocol.html">阅读完整协议规范 &rarr;</a></p>
 
     <p class="eyebrow">Benchmarks</p>
     <h2>真实吞吐量</h2>

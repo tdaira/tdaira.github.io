@@ -98,7 +98,7 @@
         <h3><a href="https://github.com/tdaira/blerpc-protocol-rn">blerpc-protocol-rn</a></h3>
         <p><span class="badge badge-blue">TypeScript</span></p>
         <p>适用于 React Native 的 TypeScript 库。使用 <code>@noble/ciphers</code>、<code>@noble/curves</code> 和 <code>@noble/hashes</code> 进行加密（纯 JS，无原生依赖）</p>
-        <pre><code class="language-json">"@blerpc/protocol-rn": "file:../blerpc-protocol-rn"</code></pre>
+        <pre><code class="language-json">"@blerpc/protocol-rn": "github:tdaira/blerpc-protocol-rn"</code></pre>
       </div>
     </div>
 
@@ -108,16 +108,17 @@
       <table>
         <thead><tr><th>仓库</th><th>CI 检查项</th></tr></thead>
         <tbody>
-          <tr><td>blerpc</td><td>Python 测试 + ruff lint，C lint (clang-format)，Go lint + build，iOS build，Android build，Flutter build</td></tr>
+          <tr><td>blerpc</td><td>Python 测试 + ruff lint，C lint (clang-format)，Go lint + build，iOS build，Android build，Flutter build，React Native build</td></tr>
           <tr><td>blerpc-protocol</td><td>Python 测试 + lint，C lint + 测试</td></tr>
           <tr><td>blerpc-protocol-swift</td><td>swift build，swift test，SwiftLint</td></tr>
           <tr><td>blerpc-protocol-kt</td><td>Gradle test，ktlint</td></tr>
           <tr><td>blerpc-protocol-dart</td><td>dart analyze，dart test，自动发布到 pub.dev</td></tr>
+          <tr><td>blerpc-protocol-rn</td><td>eslint，prettier check，jest test，npm publish</td></tr>
         </tbody>
       </table>
 
     <h2>许可证</h2>
-    <p>所有 bleRPC 仓库均以 <a href="https://www.gnu.org/licenses/lgpl-3.0.html">GNU 宽通用公共许可证 v3.0 (LGPL-3.0)</a> 发布，并附带静态链接例外。您可以静态链接 bleRPC 库而无需提供可重链接的目标文件。详情请参阅各仓库中的 <code>LICENSING_EXCEPTION</code> 文件。</p>
+    <p>所有 bleRPC 仓库均以 <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License 2.0</a> 发布，您可在开源或闭源项目（包括嵌入式固件）中自由使用。</p>
   </main>
 
   <footer></footer>

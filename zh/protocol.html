@@ -31,16 +31,75 @@
       </script>
     </div>
 
-    <h2>BLE 传输</h2>
-    <div class="card">
-      <p>所有通信使用<strong>单个 GATT Characteristic</strong>：</p>
-      <ul>
-        <li><strong>请求</strong>：Central 通过 Write Without Response 写入</li>
-        <li><strong>响应</strong>：Peripheral 通过 Notify 发送</li>
-      </ul>
-      <p>MTU 通过 BLE ATT MTU Exchange 过程自动协商。应用程序使用协商后的 MTU（减去 3 字节 ATT 开销）来确定最大容器载荷大小</p>
-      <p>默认超时为 <strong>100ms</strong>，可通过超时控制容器配置</p>
+    <h2>连接建立序列</h2>
+    <p>在任何 RPC 调用之前，central 会与 peripheral 执行一个简短的建立序列。这是整体的时间线 &mdash; 每个步骤都在下面的章节中详细说明（密钥交换部分参见<a href="encryption.html">加密</a>）。</p>
+    <div class="seqdiag">
+      <script type="application/json">
+{"minWidth":640,"actors":["Central","Peripheral"],"messages":[
+{"from":"Central","to":"Peripheral","label":"BLE Connect","accent":true},
+{"from":"Central","to":"Peripheral","label":"MTU Exchange","accent":true},
+{"from":"Central","to":"Peripheral","label":"Discover Services","accent":true},
+{"from":"Central","to":"Peripheral","label":"Enable Notifications","accent":true},
+{"from":"Central","to":"Peripheral","label":"Timeout Request (ctrl)","accent":true},
+{"from":"Peripheral","to":"Central","label":"Timeout Response (e.g. 100ms)","dashed":true},
+{"from":"Central","to":"Peripheral","label":"Capability Request (ctrl)","accent":true},
+{"from":"Peripheral","to":"Central","label":"Capability Response (max_req, max_resp, flags)","dashed":true},
+{"note":"Optional — when encryption is enabled (flags & 0x01)"},
+{"from":"Central","to":"Peripheral","label":"Key Exchange Step 1 (ctrl 0x6)","accent":true},
+{"from":"Peripheral","to":"Central","label":"Key Exchange Step 2 (ctrl 0x6)","dashed":true},
+{"from":"Central","to":"Peripheral","label":"Key Exchange Step 3 (ctrl 0x6)","accent":true},
+{"from":"Peripheral","to":"Central","label":"Key Exchange Step 4 (ctrl 0x6)","dashed":true},
+{"note":"AES-128-GCM session established"},
+{"note":"Ready for RPC calls"}
+]}
+      </script>
     </div>
+
+    <h2 id="command-layer">命令层</h2>
+    <p>命令层使用 RPC 元数据将 Protocol Buffers 编码的数据包装成 <strong>CommandPacket</strong>。命令通过名称（ASCII 字符串）标识，实现灵活、人类可读的调度。</p>
+
+    <h3>命令格式</h3>
+    <div class="packet-format-wrapper">
+      <div class="packet-format">
+        <div class="packet-field" style="flex:1"><div class="packet-field-name">T</div><div class="packet-field-size">1 bit</div></div>
+        <div class="packet-field" style="flex:7"><div class="packet-field-name">reserved</div><div class="packet-field-size">7 bits</div></div>
+        <div class="packet-field" style="flex:8"><div class="packet-field-name">cmd_name_len</div><div class="packet-field-size">8 bits</div></div>
+        <div class="packet-field" style="flex:16"><div class="packet-field-name">cmd_name</div><div class="packet-field-size">variable</div></div>
+        <div class="packet-field" style="flex:16"><div class="packet-field-name">data_len</div><div class="packet-field-size">16 bits (LE)</div></div>
+        <div class="packet-field packet-field-var" style="flex:16"><div class="packet-field-name">data</div><div class="packet-field-size">variable</div></div>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>字段</th><th>位</th><th>描述</th></tr></thead>
+      <tbody>
+        <tr><td><code>type</code></td><td>1</td><td><code>0</code> = 请求，<code>1</code> = 响应</td></tr>
+        <tr><td><code>reserved</code></td><td>7</td><td>零填充</td></tr>
+        <tr><td><code>cmd_name_len</code></td><td>8</td><td>命令名称的字节长度</td></tr>
+        <tr><td><code>cmd_name</code></td><td>可变</td><td>ASCII 命令名称（例如 <code>echo</code>、<code>flash_read</code>）</td></tr>
+        <tr><td><code>data_len</code></td><td>16</td><td>protobuf 数据的长度（字节，小端序）</td></tr>
+        <tr><td><code>data</code></td><td>可变</td><td>Protocol Buffers 编码的载荷</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="command-discovery">命令发现</h3>
+    <p>代码生成器通过以下两种方式之一从你的 <code>.proto</code> 文件派生命令：</p>
+    <ul>
+      <li><strong>服务定义（首选）</strong> &mdash; 如果文件声明了 <code>service { ... }</code> 块，则每个 <code>rpc</code> 方法都会成为一个命令。命令名称是方法名的 <code>snake_case</code> 形式，其请求/响应类型取自方法签名。</li>
+      <li><strong>命名约定（回退）</strong> &mdash; 当未定义服务时，匹配的 <code>*Request</code> / <code>*Response</code> 消息对会生成一个命令，其名称是前缀转换为 <code>snake_case</code> 的形式：</li>
+    </ul>
+    <table>
+      <thead><tr><th>消息对</th><th>命令名称</th></tr></thead>
+      <tbody>
+        <tr><td><code>EchoRequest</code> + <code>EchoResponse</code></td><td><code>echo</code></td></tr>
+        <tr><td><code>FlashReadRequest</code> + <code>FlashReadResponse</code></td><td><code>flash_read</code></td></tr>
+        <tr><td><code>DataWriteRequest</code> + <code>DataWriteResponse</code></td><td><code>data_write</code></td></tr>
+      </tbody>
+    </table>
+    <p>流式命令单独注册 &mdash; 既可以通过服务块中的流式 <code>rpc</code> 方法，也可以通过在 <code>proto/streaming.txt</code> 中列出它们（例如 <code>counter_stream p2c</code>、<code>counter_upload c2p</code>）。这些会生成专用的流式 API（参见<a href="#streaming">流式传输</a>），而非普通的请求/响应方法。</p>
+
+    <h2 id="encryption-layer">加密层</h2>
+    <p>加密是<strong>可选</strong>的。当会话处于活动状态时（参见<a href="encryption.html">加密</a>），序列化的命令在交给容器层<em>之前</em>使用 AES-128-GCM 加密。加密后的载荷为 <code>[counter:4][ciphertext:N][tag:16]</code> &mdash; 共 <strong>20 字节</strong>开销（4 字节计数器 + 16 字节 GCM 标签）&mdash; 随后像明文命令一样被分割到容器中。</p>
+    <p>计数器同时充当 AES-GCM nonce 和重放防护。有关握手、密钥派生、nonce 构造和重放规则，请参见<a href="encryption.html">加密</a>。</p>
 
     <h2>容器层</h2>
     <p>容器层将大载荷分割为 MTU 大小的数据包，并在接收端重新组装。每个容器携带一个事务 ID 和序列号，用于跟踪和排序。</p>
@@ -55,8 +114,8 @@
         <div class="packet-field" style="flex:8"><div class="packet-field-name">transaction_id</div><div class="packet-field-size">8 bits</div></div>
         <div class="packet-field" style="flex:8"><div class="packet-field-name">sequence_number</div><div class="packet-field-size">8 bits</div></div>
         <div class="packet-field" style="flex:2"><div class="packet-field-name">type</div><div class="packet-field-size">2</div></div>
-        <div class="packet-field" style="flex:4"><div class="packet-field-name">ctrl_cmd</div><div class="packet-field-size">4</div></div>
-        <div class="packet-field" style="flex:2"><div class="packet-field-name">rsv</div><div class="packet-field-size">2</div></div>
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">control_cmd</div><div class="packet-field-size">4</div></div>
+        <div class="packet-field" style="flex:2"><div class="packet-field-name">reserved</div><div class="packet-field-size">2</div></div>
         <div class="packet-field" style="flex:16"><div class="packet-field-name">total_length</div><div class="packet-field-size">16 bits (LE)</div></div>
         <div class="packet-field" style="flex:8"><div class="packet-field-name">payload_len</div><div class="packet-field-size">8 bits</div></div>
         <div class="packet-field packet-field-var" style="flex:14"><div class="packet-field-name">payload</div><div class="packet-field-size">variable</div></div>
@@ -84,8 +143,8 @@
         <div class="packet-field" style="flex:8"><div class="packet-field-name">transaction_id</div><div class="packet-field-size">8 bits</div></div>
         <div class="packet-field" style="flex:8"><div class="packet-field-name">sequence_number</div><div class="packet-field-size">8 bits</div></div>
         <div class="packet-field" style="flex:2"><div class="packet-field-name">type</div><div class="packet-field-size">2</div></div>
-        <div class="packet-field" style="flex:4"><div class="packet-field-name">ctrl_cmd</div><div class="packet-field-size">4</div></div>
-        <div class="packet-field" style="flex:2"><div class="packet-field-name">rsv</div><div class="packet-field-size">2</div></div>
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">control_cmd</div><div class="packet-field-size">4</div></div>
+        <div class="packet-field" style="flex:2"><div class="packet-field-name">reserved</div><div class="packet-field-size">2</div></div>
         <div class="packet-field" style="flex:8"><div class="packet-field-name">payload_len</div><div class="packet-field-size">8 bits</div></div>
         <div class="packet-field packet-field-var" style="flex:14"><div class="packet-field-name">payload</div><div class="packet-field-size">variable</div></div>
       </div>
@@ -120,14 +179,47 @@
       <p style="margin-bottom:0">总载荷：<strong>500 字节</strong>（238 + 240 + 22）</p>
 
     <h3>最大载荷</h3>
-    <p><code>sequence_number</code> 为 8 位，将单个事务限制为约 255 个容器。在典型 MTU 为 247（每个后续容器 240 字节）的情况下，每个事务的实际最大载荷约为 <strong>60 KB</strong>。对于更大的传输，请使用多次请求/响应循环。</p>
+    <p>有两个限制约束单个事务。<code>sequence_number</code> 为 8 位，将其限制为约 255 个容器；在典型 MTU 为 247（每个后续容器 240 字节）的情况下，实际最大载荷约为 <strong>60 KB</strong>。16 位的 <code>total_length</code> 字段还施加了 <strong>65,535 字节</strong>的绝对上限。对于更大的传输，请使用多次请求/响应循环。</p>
+
+    <h2>BLE 传输</h2>
+    <div class="card">
+      <p>所有通信使用<strong>单个 GATT Characteristic</strong>：</p>
+      <ul>
+        <li><strong>请求</strong>：Central 通过 Write Without Response 写入</li>
+        <li><strong>响应</strong>：Peripheral 通过 Notify 发送</li>
+      </ul>
+      <p>MTU 通过 BLE ATT MTU Exchange 过程自动协商。应用程序使用协商后的 MTU（减去 3 字节 ATT 开销）来确定最大容器载荷大小</p>
+      <p>默认超时为 <strong>100ms</strong>，可通过超时控制容器配置</p>
+    </div>
+
+    <h2>请求/响应流程</h2>
+    <p>完整的 RPC 调用涉及命令层编码、容器层分割、BLE 传输，以及接收端的反向操作：</p>
+
+    <div class="seqdiag">
+      <script type="application/json">
+{"minWidth":520,"actors":["Central","Peripheral"],"messages":[
+{"self":"Central","label":"1. Protobuf encode request"},
+{"self":"Central","label":"2. Wrap in command header"},
+{"self":"Central","label":"3. Split into containers"},
+{"from":"Central","to":"Peripheral","label":"Write Without Response (FIRST)","accent":true},
+{"from":"Central","to":"Peripheral","label":"Write Without Response (SUBSEQUENT...)","accent":true},
+{"self":"Peripheral","label":"4. Reassemble containers"},
+{"self":"Peripheral","label":"5. Decode command + Protobuf"},
+{"self":"Peripheral","label":"6. Execute handler"},
+{"self":"Peripheral","label":"7. Encode response + split"},
+{"from":"Peripheral","to":"Central","label":"Notify (FIRST)","dashed":true,"accent":true},
+{"from":"Peripheral","to":"Central","label":"Notify (SUBSEQUENT...)","dashed":true,"accent":true},
+{"self":"Central","label":"8. Reassemble + decode response"}
+]}
+      </script>
+    </div>
 
     <h2>控制容器</h2>
     <p>控制容器（<code>type=0b11</code>）携带协议级命令而非应用数据。</p>
 
     <h3>超时共享 (control_cmd=0x1)</h3>
     <p>允许 peripheral 向 central 通告其处理超时时间。</p>
-      <h3>请求（Central &rarr; Peripheral）</h3>
+      <h4>请求（Central &rarr; Peripheral）</h4>
       <table>
         <thead><tr><th>字段</th><th>值</th></tr></thead>
         <tbody>
@@ -136,7 +228,7 @@
           <tr><td>payload_len</td><td><code>0x00</code></td></tr>
         </tbody>
       </table>
-      <h3>响应（Peripheral &rarr; Central）</h3>
+      <h4>响应（Peripheral &rarr; Central）</h4>
       <table>
         <thead><tr><th>字段</th><th>值</th></tr></thead>
         <tbody>
@@ -149,7 +241,7 @@
 
     <h3>能力共享 (control_cmd=0x4)</h3>
     <p>允许 peripheral 向 central 通告其缓冲区约束和功能标志。</p>
-      <h3>请求（Central &rarr; Peripheral）</h3>
+      <h4>请求（Central &rarr; Peripheral）</h4>
       <table>
         <thead><tr><th>字段</th><th>值</th></tr></thead>
         <tbody>
@@ -161,7 +253,7 @@
           <tr><td>payload[4:6]</td><td><code>flags</code>（16 位小端序，通常为 0）</td></tr>
         </tbody>
       </table>
-      <h3>响应（Peripheral &rarr; Central）</h3>
+      <h4>响应（Peripheral &rarr; Central）</h4>
       <table>
         <thead><tr><th>字段</th><th>值</th></tr></thead>
         <tbody>
@@ -173,7 +265,7 @@
           <tr><td>payload[4:6]</td><td><code>flags</code>（16 位小端序）&mdash; 位 0：支持加密</td></tr>
         </tbody>
       </table>
-      <p>当 <code>flags</code> 不存在时（4 字节载荷，用于向后兼容），没有可选功能可用</p>
+      <p>能力载荷始终为 6 字节。没有可选功能的 peripheral 只需报告 <code>flags = 0x0000</code></p>
 
     <h3>流结束 (control_cmd=0x2, 0x3)</h3>
     <p>表示流式序列结束。任一端都可以终止流。</p>
@@ -200,6 +292,7 @@
       <p>错误代码：</p>
       <ul>
         <li><code>0x01</code> &mdash; <strong>RESPONSE_TOO_LARGE</strong>：响应载荷超过 <code>max_response_payload_size</code></li>
+        <li><code>0x02</code> &mdash; <strong>BUSY</strong>：peripheral 没有空闲的请求槽位（它仍在处理另一个事务）；central 应重试</li>
       </ul>
 
     <h3>密钥交换 (control_cmd=0x6)</h3>
@@ -215,85 +308,7 @@
       </table>
       <p>交换 4 个容器（步骤 1&ndash;4）完成握手。完成后，所有后续数据容器携带加密载荷</p>
 
-    <h3>加密数据容器</h3>
-    <p>当加密启用时，数据容器（FIRST / SUBSEQUENT）的载荷替换为序列化命令的加密形式：</p>
-    <div class="packet-format-wrapper">
-      <div class="packet-format">
-        <div class="packet-field" style="flex:4"><div class="packet-field-name">counter</div><div class="packet-field-size">32 bits (LE)</div></div>
-        <div class="packet-field packet-field-var" style="flex:10"><div class="packet-field-name">ciphertext</div><div class="packet-field-size">variable</div></div>
-        <div class="packet-field" style="flex:4"><div class="packet-field-name">tag</div><div class="packet-field-size">128 bits</div></div>
-      </div>
-    </div>
-    <table>
-      <thead><tr><th>字段</th><th>大小</th><th>描述</th></tr></thead>
-      <tbody>
-        <tr><td><code>counter</code></td><td>4 字节</td><td>单调递增计数器（小端序）。用作 AES-GCM nonce 和重放检测。</td></tr>
-        <tr><td><code>ciphertext</code></td><td>N 字节</td><td>AES-128-GCM 加密的序列化命令</td></tr>
-        <tr><td><code>tag</code></td><td>16 字节</td><td>AES-GCM 认证标签</td></tr>
-      </tbody>
-    </table>
-    <p>总开销：<strong>20 字节</strong>（4 计数器 + 16 标签）。密文随后按常规方式分割到容器中。</p>
-
-    <h2>命令层</h2>
-    <p>命令层使用 RPC 元数据包装 Protocol Buffers 编码的数据。命令通过名称（ASCII 字符串）标识，实现灵活、人类可读的调度。</p>
-
-    <h3>命令格式</h3>
-    <div class="packet-format-wrapper">
-      <div class="packet-format">
-        <div class="packet-field" style="flex:1"><div class="packet-field-name">T</div><div class="packet-field-size">1 bit</div></div>
-        <div class="packet-field" style="flex:7"><div class="packet-field-name">reserved</div><div class="packet-field-size">7 bits</div></div>
-        <div class="packet-field" style="flex:8"><div class="packet-field-name">cmd_name_len</div><div class="packet-field-size">8 bits</div></div>
-        <div class="packet-field" style="flex:16"><div class="packet-field-name">cmd_name</div><div class="packet-field-size">variable</div></div>
-        <div class="packet-field" style="flex:16"><div class="packet-field-name">data_len</div><div class="packet-field-size">16 bits (LE)</div></div>
-        <div class="packet-field packet-field-var" style="flex:16"><div class="packet-field-name">data</div><div class="packet-field-size">variable</div></div>
-      </div>
-    </div>
-    <table>
-      <thead><tr><th>字段</th><th>位</th><th>描述</th></tr></thead>
-      <tbody>
-        <tr><td><code>type</code></td><td>1</td><td><code>0</code> = 请求，<code>1</code> = 响应</td></tr>
-        <tr><td><code>reserved</code></td><td>7</td><td>零填充</td></tr>
-        <tr><td><code>cmd_name_len</code></td><td>8</td><td>命令名称的字节长度</td></tr>
-        <tr><td><code>cmd_name</code></td><td>可变</td><td>ASCII 命令名称（例如 <code>echo</code>、<code>flash_read</code>）</td></tr>
-        <tr><td><code>data_len</code></td><td>16</td><td>protobuf 数据的长度（字节，小端序）</td></tr>
-        <tr><td><code>data</code></td><td>可变</td><td>Protocol Buffers 编码的载荷</td></tr>
-      </tbody>
-    </table>
-
-    <h3>命令发现</h3>
-    <p>命令从 <code>.proto</code> 文件定义中自动生成。匹配的 <code>*Request</code> / <code>*Response</code> 消息对会生成一个命令，其名称是前缀转换为 <code>snake_case</code> 的形式：</p>
-    <table>
-      <thead><tr><th>消息对</th><th>命令名称</th></tr></thead>
-      <tbody>
-        <tr><td><code>EchoRequest</code> + <code>EchoResponse</code></td><td><code>echo</code></td></tr>
-        <tr><td><code>FlashReadRequest</code> + <code>FlashReadResponse</code></td><td><code>flash_read</code></td></tr>
-        <tr><td><code>DataWriteRequest</code> + <code>DataWriteResponse</code></td><td><code>data_write</code></td></tr>
-      </tbody>
-    </table>
-
-    <h2>请求/响应流程</h2>
-    <p>完整的 RPC 调用涉及命令层编码、容器层分割、BLE 传输，以及接收端的反向操作：</p>
-
-    <div class="seqdiag">
-      <script type="application/json">
-{"minWidth":520,"actors":["Central","Peripheral"],"messages":[
-{"self":"Central","label":"1. Protobuf encode request"},
-{"self":"Central","label":"2. Wrap in command header"},
-{"self":"Central","label":"3. Split into containers"},
-{"from":"Central","to":"Peripheral","label":"Write Without Response (FIRST)","accent":true},
-{"from":"Central","to":"Peripheral","label":"Write Without Response (SUBSEQUENT...)","accent":true},
-{"self":"Peripheral","label":"4. Reassemble containers"},
-{"self":"Peripheral","label":"5. Decode command + Protobuf"},
-{"self":"Peripheral","label":"6. Execute handler"},
-{"self":"Peripheral","label":"7. Encode response + split"},
-{"from":"Peripheral","to":"Central","label":"Notify (FIRST)","dashed":true,"accent":true},
-{"from":"Peripheral","to":"Central","label":"Notify (SUBSEQUENT...)","dashed":true,"accent":true},
-{"self":"Central","label":"8. Reassemble + decode response"}
-]}
-      </script>
-    </div>
-
-    <h2>流式传输</h2>
+    <h2 id="streaming">流式传输</h2>
     <p>bleRPC 支持两种流式传输模式，超越简单的请求/响应：</p>
 
     <h3>Peripheral &rarr; Central 流（服务端流式）</h3>
@@ -324,29 +339,6 @@
       </script>
     </div>
 
-    <h2>连接建立序列</h2>
-    <p>当 central 连接到 peripheral 时，会执行以下初始化步骤：</p>
-    <div class="seqdiag">
-      <script type="application/json">
-{"minWidth":640,"actors":["Central","Peripheral"],"messages":[
-{"from":"Central","to":"Peripheral","label":"BLE Connect","accent":true},
-{"from":"Central","to":"Peripheral","label":"MTU Exchange","accent":true},
-{"from":"Central","to":"Peripheral","label":"Discover Services","accent":true},
-{"from":"Central","to":"Peripheral","label":"Enable Notifications","accent":true},
-{"from":"Central","to":"Peripheral","label":"Timeout Request (ctrl)","accent":true},
-{"from":"Peripheral","to":"Central","label":"Timeout Response (e.g. 100ms)","dashed":true},
-{"from":"Central","to":"Peripheral","label":"Capability Request (ctrl)","accent":true},
-{"from":"Peripheral","to":"Central","label":"Capability Response (max_req, max_resp, flags)","dashed":true},
-{"note":"Optional — when encryption is enabled (flags & 0x01)"},
-{"from":"Central","to":"Peripheral","label":"Key Exchange Step 1 (ctrl 0x6)","accent":true},
-{"from":"Peripheral","to":"Central","label":"Key Exchange Step 2 (ctrl 0x6)","dashed":true},
-{"from":"Central","to":"Peripheral","label":"Key Exchange Step 3 (ctrl 0x6)","accent":true},
-{"from":"Peripheral","to":"Central","label":"Key Exchange Step 4 (ctrl 0x6)","dashed":true},
-{"note":"AES-128-GCM session established"},
-{"note":"Ready for RPC calls"}
-]}
-      </script>
-    </div>
   </main>
 
   <footer></footer>

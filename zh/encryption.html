@@ -19,7 +19,7 @@
     <h1>端到端加密</h1>
     <p>bleRPC 支持可选的端到端加密，使用 4 步密钥交换握手和 AES-128-GCM 会话加密。加密在连接建立期间协商，对应用层透明。</p>
 
-    <h2>概述</h2>
+    <h2>加密组件</h2>
       <table>
         <thead><tr><th>组件</th><th>算法</th></tr></thead>
         <tbody>
@@ -58,10 +58,10 @@
 {"self":"Central","label":"shared_secret = X25519(priv, peripheral_pub)"},
 {"self":"Central","label":"session_key = HKDF(shared_secret)"},
 {"self":"Central","label":"Verify signature (TOFU on first connection)"},
-{"self":"Central","label":"confirmation = encrypt(random, session_key)"},
+{"self":"Central","label":"confirmation = encrypt(\"BLERPC_CONFIRM_C\", session_key)"},
 {"from":"Central","to":"Peripheral","label":"Step 3: encrypted_confirmation (45 B)","accent":true},
 {"self":"Peripheral","label":"Decrypt confirmation, verify session_key"},
-{"self":"Peripheral","label":"confirmation = encrypt(random, session_key)"},
+{"self":"Peripheral","label":"confirmation = encrypt(\"BLERPC_CONFIRM_P\", session_key)"},
 {"from":"Peripheral","to":"Central","label":"Step 4: encrypted_confirmation (45 B)","dashed":true,"accent":true},
 {"self":"Central","label":"Decrypt confirmation, verify session_key"},
 {"note":"Session key established — all subsequent data is encrypted"}
@@ -105,12 +105,12 @@
           <div class="packet-field" style="flex:4"><div class="packet-field-name">tag</div><div class="packet-field-size">16 bytes</div></div>
         </div>
       </div>
-      <p>明文是 16 字节随机数据，使用派生的会话密钥和随机 12 字节 nonce 通过 AES-128-GCM 加密</p>
+      <p>明文是固定的 16 字节标记（<code>BLERPC_CONFIRM_C</code>），使用派生的会话密钥和随机 12 字节 nonce 通过 AES-128-GCM 加密。Peripheral 解密后检查其是否与预期标记完全一致，从而证明双方持有相同的会话密钥</p>
     </div>
 
     <h3>步骤 4：Peripheral &rarr; Central（45 字节）</h3>
     <div class="card">
-      <p>Peripheral 解密步骤 3 以验证会话密钥，然后发送自己的加密确认</p>
+      <p>Peripheral 解密步骤 3，验证其与预期的 <code>BLERPC_CONFIRM_C</code> 标记一致，然后发送自己的加密确认，其中包含 <code>BLERPC_CONFIRM_P</code></p>
       <div class="packet-format-wrapper">
         <div class="packet-format">
           <div class="packet-field" style="flex:1"><div class="packet-field-name">step</div><div class="packet-field-size">1 byte</div></div>
@@ -150,11 +150,11 @@ session_key   = HKDF-SHA256(
     <h3>加密过程</h3>
     <div class="card">
       <ol>
-        <li>序列化 <a href="protocol.html">CommandPacket</a>（类型 + 名称 + protobuf 数据）</li>
-        <li>递增 TX 计数器</li>
-        <li>构造 12 字节 nonce：<code>[counter_LE:4][direction:1][0x00:7]</code> &mdash; <code>direction</code> 为 Central&rarr;Peripheral 时是 <code>0</code>，Peripheral&rarr;Central 时是 <code>1</code></li>
+        <li>序列化 <a href="protocol.html#command-layer">CommandPacket</a>（类型 + 名称 + protobuf 数据）</li>
+        <li>使用<strong>当前</strong> TX 计数器构造 12 字节 nonce：<code>[counter_LE:4][direction:1][0x00:7]</code> &mdash; <code>direction</code> 为 Central&rarr;Peripheral 时是 <code>0</code>，Peripheral&rarr;Central 时是 <code>1</code></li>
         <li>使用 AES-128-GCM 加密：<code>ciphertext, tag = AES-GCM(session_key, nonce, plaintext)</code></li>
-        <li>前缀添加计数器：<code>[counter:4][ciphertext:N][tag:16]</code></li>
+        <li>前缀添加当前计数器：<code>[counter:4][ciphertext:N][tag:16]</code></li>
+        <li>为下一条消息递增 TX 计数器（因此会话中的第一条消息使用计数器 <code>0</code>）</li>
         <li>按常规方式分割到容器中</li>
       </ol>
     </div>
@@ -174,7 +174,7 @@ session_key   = HKDF-SHA256(
     <div class="card">
       <p>每个方向维护一个独立的单调递增计数器：</p>
       <ul>
-        <li><strong>TX 计数器</strong>：每次加密前递增。从 0 开始</li>
+        <li><strong>TX 计数器</strong>：从 0 开始。每条消息使用当前值加密，随后该值递增 &mdash; 因此第一条消息使用计数器 0</li>
         <li><strong>RX 计数器</strong>：跟踪上次接收的计数器。任何计数器 &le; 上次接收计数器的消息将被拒绝</li>
       </ul>
       <p>这可以防止重放攻击，即攻击者重新发送之前捕获的加密数据包</p>

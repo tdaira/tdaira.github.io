@@ -19,7 +19,7 @@
     <h1>End-to-End Encryption</h1>
     <p>bleRPC supports optional end-to-end encryption using a 4-step key exchange handshake followed by AES-128-GCM session encryption. Encryption is negotiated during connection setup and is transparent to the application layer.</p>
 
-    <h2>Overview</h2>
+    <h2>Cryptographic Components</h2>
       <table>
         <thead><tr><th>Component</th><th>Algorithm</th></tr></thead>
         <tbody>
@@ -58,10 +58,10 @@
 {"self":"Central","label":"shared_secret = X25519(priv, peripheral_pub)"},
 {"self":"Central","label":"session_key = HKDF(shared_secret)"},
 {"self":"Central","label":"Verify signature (TOFU on first connection)"},
-{"self":"Central","label":"confirmation = encrypt(random, session_key)"},
+{"self":"Central","label":"confirmation = encrypt(\"BLERPC_CONFIRM_C\", session_key)"},
 {"from":"Central","to":"Peripheral","label":"Step 3: encrypted_confirmation (45 B)","accent":true},
 {"self":"Peripheral","label":"Decrypt confirmation, verify session_key"},
-{"self":"Peripheral","label":"confirmation = encrypt(random, session_key)"},
+{"self":"Peripheral","label":"confirmation = encrypt(\"BLERPC_CONFIRM_P\", session_key)"},
 {"from":"Peripheral","to":"Central","label":"Step 4: encrypted_confirmation (45 B)","dashed":true,"accent":true},
 {"self":"Central","label":"Decrypt confirmation, verify session_key"},
 {"note":"Session key established — all subsequent data is encrypted"}
@@ -105,12 +105,12 @@
           <div class="packet-field" style="flex:4"><div class="packet-field-name">tag</div><div class="packet-field-size">16 bytes</div></div>
         </div>
       </div>
-      <p>The plaintext is 16 random bytes encrypted with AES-128-GCM using the derived session key and a random 12-byte nonce.</p>
+      <p>The plaintext is a fixed 16-byte marker (<code>BLERPC_CONFIRM_C</code>) encrypted with AES-128-GCM using the derived session key and a random 12-byte nonce. The peripheral decrypts it and checks for the exact expected marker, proving both sides hold the same session key.</p>
     </div>
 
     <h3>Step 4: Peripheral &rarr; Central (45 bytes)</h3>
     <div class="card">
-      <p>The peripheral decrypts Step 3 to verify the session key, then sends its own encrypted confirmation.</p>
+      <p>The peripheral decrypts Step 3, verifies it matches the expected <code>BLERPC_CONFIRM_C</code> marker, then sends its own encrypted confirmation containing <code>BLERPC_CONFIRM_P</code>.</p>
       <div class="packet-format-wrapper">
         <div class="packet-format">
           <div class="packet-field" style="flex:1"><div class="packet-field-name">step</div><div class="packet-field-size">1 byte</div></div>
@@ -150,11 +150,11 @@ session_key   = HKDF-SHA256(
     <h3>Encryption Process</h3>
     <div class="card">
       <ol>
-        <li>Serialize the <a href="protocol.html">CommandPacket</a> (type + name + protobuf data)</li>
-        <li>Increment the TX counter</li>
-        <li>Construct 12-byte nonce: <code>[counter_LE:4][direction:1][0x00:7]</code> &mdash; <code>direction</code> is <code>0</code> for Central&rarr;Peripheral, <code>1</code> for Peripheral&rarr;Central</li>
+        <li>Serialize the <a href="protocol.html#command-layer">CommandPacket</a> (type + name + protobuf data)</li>
+        <li>Construct the 12-byte nonce from the <strong>current</strong> TX counter: <code>[counter_LE:4][direction:1][0x00:7]</code> &mdash; <code>direction</code> is <code>0</code> for Central&rarr;Peripheral, <code>1</code> for Peripheral&rarr;Central</li>
         <li>Encrypt with AES-128-GCM: <code>ciphertext, tag = AES-GCM(session_key, nonce, plaintext)</code></li>
-        <li>Prepend counter: <code>[counter:4][ciphertext:N][tag:16]</code></li>
+        <li>Prepend the current counter: <code>[counter:4][ciphertext:N][tag:16]</code></li>
+        <li>Increment the TX counter for the next message (the first message on a session therefore uses counter <code>0</code>)</li>
         <li>Split into containers as usual</li>
       </ol>
     </div>
@@ -174,7 +174,7 @@ session_key   = HKDF-SHA256(
     <div class="card">
       <p>Each direction maintains an independent monotonic counter:</p>
       <ul>
-        <li><strong>TX counter</strong>: Incremented before each encryption. Starts at 0.</li>
+        <li><strong>TX counter</strong>: Starts at 0. Each message is encrypted with the current value, which is then incremented &mdash; so the first message uses counter 0.</li>
         <li><strong>RX counter</strong>: Tracks the last received counter. Any message with a counter &le; the last received counter is rejected.</li>
       </ul>
       <p>This prevents replay attacks where an attacker re-sends previously captured encrypted packets.</p>

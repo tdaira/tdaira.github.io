@@ -31,16 +31,75 @@
       </script>
     </div>
 
-    <h2>BLEトランスポート</h2>
-    <div class="card">
-      <p>すべての通信は<strong>単一のGATT Characteristic</strong>を使用します：</p>
-      <ul>
-        <li><strong>リクエスト</strong>: CentralがWrite Without Responseで書き込み</li>
-        <li><strong>レスポンス</strong>: PeripheralがNotifyで送信</li>
-      </ul>
-      <p>MTUはBLE ATT MTU Exchangeプロシージャにより自動的に合意形成されます。アプリケーションは合意形成されたMTU（ATTオーバーヘッドの3バイトを引いた値）を使用して、コンテナペイロードの最大サイズを決定</p>
-      <p>デフォルトタイムアウトは<strong>100ms</strong>で、タイムアウト制御コンテナで設定可能</p>
+    <h2>接続セットアップシーケンス</h2>
+    <p>RPC呼び出しを行う前に、セントラルはペリフェラルとの短いセットアップシーケンスを実行します。これは全体のタイムラインであり、各ステップは以下のセクション（および鍵交換については<a href="encryption.html">暗号化</a>）で詳しく説明します。</p>
+    <div class="seqdiag">
+      <script type="application/json">
+{"minWidth":640,"actors":["Central","Peripheral"],"messages":[
+{"from":"Central","to":"Peripheral","label":"BLE Connect","accent":true},
+{"from":"Central","to":"Peripheral","label":"MTU Exchange","accent":true},
+{"from":"Central","to":"Peripheral","label":"Discover Services","accent":true},
+{"from":"Central","to":"Peripheral","label":"Enable Notifications","accent":true},
+{"from":"Central","to":"Peripheral","label":"Timeout Request (ctrl)","accent":true},
+{"from":"Peripheral","to":"Central","label":"Timeout Response (e.g. 100ms)","dashed":true},
+{"from":"Central","to":"Peripheral","label":"Capability Request (ctrl)","accent":true},
+{"from":"Peripheral","to":"Central","label":"Capability Response (max_req, max_resp, flags)","dashed":true},
+{"note":"Optional — when encryption is enabled (flags & 0x01)"},
+{"from":"Central","to":"Peripheral","label":"Key Exchange Step 1 (ctrl 0x6)","accent":true},
+{"from":"Peripheral","to":"Central","label":"Key Exchange Step 2 (ctrl 0x6)","dashed":true},
+{"from":"Central","to":"Peripheral","label":"Key Exchange Step 3 (ctrl 0x6)","accent":true},
+{"from":"Peripheral","to":"Central","label":"Key Exchange Step 4 (ctrl 0x6)","dashed":true},
+{"note":"AES-128-GCM session established"},
+{"note":"Ready for RPC calls"}
+]}
+      </script>
     </div>
+
+    <h2 id="command-layer">コマンド層</h2>
+    <p>コマンド層は、Protocol BuffersでエンコードされたデータをRPCメタデータとともに <strong>CommandPacket</strong> にまとめます。コマンドは名前（ASCII文字列）で識別され、柔軟で人間が読みやすいディスパッチを可能にします。</p>
+
+    <h3>コマンドフォーマット</h3>
+    <div class="packet-format-wrapper">
+      <div class="packet-format">
+        <div class="packet-field" style="flex:1"><div class="packet-field-name">T</div><div class="packet-field-size">1 bit</div></div>
+        <div class="packet-field" style="flex:7"><div class="packet-field-name">reserved</div><div class="packet-field-size">7 bits</div></div>
+        <div class="packet-field" style="flex:8"><div class="packet-field-name">cmd_name_len</div><div class="packet-field-size">8 bits</div></div>
+        <div class="packet-field" style="flex:16"><div class="packet-field-name">cmd_name</div><div class="packet-field-size">variable</div></div>
+        <div class="packet-field" style="flex:16"><div class="packet-field-name">data_len</div><div class="packet-field-size">16 bits (LE)</div></div>
+        <div class="packet-field packet-field-var" style="flex:16"><div class="packet-field-name">data</div><div class="packet-field-size">variable</div></div>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>フィールド</th><th>ビット数</th><th>説明</th></tr></thead>
+      <tbody>
+        <tr><td><code>type</code></td><td>1</td><td><code>0</code> = リクエスト、<code>1</code> = レスポンス</td></tr>
+        <tr><td><code>reserved</code></td><td>7</td><td>ゼロ埋め</td></tr>
+        <tr><td><code>cmd_name_len</code></td><td>8</td><td>コマンド名の長さ（バイト）</td></tr>
+        <tr><td><code>cmd_name</code></td><td>可変</td><td>ASCIIコマンド名（例: <code>echo</code>、<code>flash_read</code>）</td></tr>
+        <tr><td><code>data_len</code></td><td>16</td><td>protobufデータの長さ（バイト、リトルエンディアン）</td></tr>
+        <tr><td><code>data</code></td><td>可変</td><td>Protocol Buffersでエンコードされたペイロード</td></tr>
+      </tbody>
+    </table>
+
+    <h3 id="command-discovery">コマンド検出</h3>
+    <p>コードジェネレーターは、次の2つの方法のいずれかで<code>.proto</code>ファイルからコマンドを導出します：</p>
+    <ul>
+      <li><strong>サービス定義（推奨）</strong> &mdash; ファイルに<code>service { ... }</code>ブロックが宣言されている場合、各<code>rpc</code>メソッドがコマンドになります。コマンド名はメソッド名を<code>snake_case</code>にしたもので、そのリクエスト/レスポンス型はメソッドシグネチャから取得されます。</li>
+      <li><strong>命名規則（フォールバック）</strong> &mdash; サービスが定義されていない場合、対応する<code>*Request</code> / <code>*Response</code>メッセージのペアから、プレフィックスを<code>snake_case</code>に変換した名前のコマンドが生成されます：</li>
+    </ul>
+    <table>
+      <thead><tr><th>メッセージペア</th><th>コマンド名</th></tr></thead>
+      <tbody>
+        <tr><td><code>EchoRequest</code> + <code>EchoResponse</code></td><td><code>echo</code></td></tr>
+        <tr><td><code>FlashReadRequest</code> + <code>FlashReadResponse</code></td><td><code>flash_read</code></td></tr>
+        <tr><td><code>DataWriteRequest</code> + <code>DataWriteResponse</code></td><td><code>data_write</code></td></tr>
+      </tbody>
+    </table>
+    <p>ストリーミングコマンドは別途登録されます &mdash; サービスブロック内のストリーミング<code>rpc</code>メソッドを介するか、<code>proto/streaming.txt</code>にリストアップする（例: <code>counter_stream p2c</code>、<code>counter_upload c2p</code>）かのいずれかです。これらは、単純なリクエスト/レスポンスメソッドの代わりに、専用のストリーミングAPI（<a href="#streaming">ストリーミング</a>を参照）を生成します。</p>
+
+    <h2 id="encryption-layer">暗号化層</h2>
+    <p>暗号化は<strong>オプション</strong>です。セッションが有効な場合（<a href="encryption.html">暗号化</a>を参照）、シリアライズされたコマンドは、コンテナ層に渡される<em>前に</em>AES-128-GCMで暗号化されます。暗号化されたペイロードは<code>[counter:4][ciphertext:N][tag:16]</code>であり、<strong>20バイト</strong>のオーバーヘッド（4バイトのカウンター + 16バイトのGCMタグ）を持ちます。これは、プレーンテキストのコマンドとまったく同じようにコンテナに分割されます。</p>
+    <p>カウンターは、AES-GCMのnonceとリプレイ防止の両方を兼ねます。ハンドシェイク、鍵導出、nonceの構成、リプレイ規則については<a href="encryption.html">暗号化</a>を参照してください。</p>
 
     <h2>コンテナ層</h2>
     <p>コンテナ層は、大きなペイロードをMTUサイズのパケットに分割し、受信側で再組み立てします。各コンテナは追跡と順序付けのためにトランザクションIDとシーケンス番号を持ちます。</p>
@@ -55,8 +114,8 @@
         <div class="packet-field" style="flex:8"><div class="packet-field-name">transaction_id</div><div class="packet-field-size">8 bits</div></div>
         <div class="packet-field" style="flex:8"><div class="packet-field-name">sequence_number</div><div class="packet-field-size">8 bits</div></div>
         <div class="packet-field" style="flex:2"><div class="packet-field-name">type</div><div class="packet-field-size">2</div></div>
-        <div class="packet-field" style="flex:4"><div class="packet-field-name">ctrl_cmd</div><div class="packet-field-size">4</div></div>
-        <div class="packet-field" style="flex:2"><div class="packet-field-name">rsv</div><div class="packet-field-size">2</div></div>
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">control_cmd</div><div class="packet-field-size">4</div></div>
+        <div class="packet-field" style="flex:2"><div class="packet-field-name">reserved</div><div class="packet-field-size">2</div></div>
         <div class="packet-field" style="flex:16"><div class="packet-field-name">total_length</div><div class="packet-field-size">16 bits (LE)</div></div>
         <div class="packet-field" style="flex:8"><div class="packet-field-name">payload_len</div><div class="packet-field-size">8 bits</div></div>
         <div class="packet-field packet-field-var" style="flex:14"><div class="packet-field-name">payload</div><div class="packet-field-size">variable</div></div>
@@ -84,8 +143,8 @@
         <div class="packet-field" style="flex:8"><div class="packet-field-name">transaction_id</div><div class="packet-field-size">8 bits</div></div>
         <div class="packet-field" style="flex:8"><div class="packet-field-name">sequence_number</div><div class="packet-field-size">8 bits</div></div>
         <div class="packet-field" style="flex:2"><div class="packet-field-name">type</div><div class="packet-field-size">2</div></div>
-        <div class="packet-field" style="flex:4"><div class="packet-field-name">ctrl_cmd</div><div class="packet-field-size">4</div></div>
-        <div class="packet-field" style="flex:2"><div class="packet-field-name">rsv</div><div class="packet-field-size">2</div></div>
+        <div class="packet-field" style="flex:4"><div class="packet-field-name">control_cmd</div><div class="packet-field-size">4</div></div>
+        <div class="packet-field" style="flex:2"><div class="packet-field-name">reserved</div><div class="packet-field-size">2</div></div>
         <div class="packet-field" style="flex:8"><div class="packet-field-name">payload_len</div><div class="packet-field-size">8 bits</div></div>
         <div class="packet-field packet-field-var" style="flex:14"><div class="packet-field-name">payload</div><div class="packet-field-size">variable</div></div>
       </div>
@@ -120,14 +179,47 @@
       <p style="margin-bottom:0">ペイロード合計: <strong>500バイト</strong>（238 + 240 + 22）</p>
 
     <h3>最大ペイロード</h3>
-    <p><code>sequence_number</code>は8ビットであるため、単一トランザクションは約255コンテナに制限されます。一般的なMTU 247（後続コンテナあたり240バイト）の場合、トランザクションあたりの実用的な最大ペイロードは約<strong>60 KB</strong>です。より大きな転送には、複数のリクエスト/レスポンスサイクルを使用してください。</p>
+    <p>単一トランザクションは2つの制限で制約されます。<code>sequence_number</code>は8ビットであるため、約255コンテナに制限されます。一般的なMTU 247（後続コンテナあたり240バイト）の場合、これは実用的な最大値として約<strong>60 KB</strong>になります。また、16ビットの<code>total_length</code>フィールドにより、絶対的な上限として<strong>65,535バイト</strong>が課されます。より大きな転送には、複数のリクエスト/レスポンスサイクルを使用してください。</p>
+
+    <h2>BLEトランスポート</h2>
+    <div class="card">
+      <p>すべての通信は<strong>単一のGATT Characteristic</strong>を使用します：</p>
+      <ul>
+        <li><strong>リクエスト</strong>: CentralがWrite Without Responseで書き込み</li>
+        <li><strong>レスポンス</strong>: PeripheralがNotifyで送信</li>
+      </ul>
+      <p>MTUはBLE ATT MTU Exchangeプロシージャにより自動的に合意形成されます。アプリケーションは合意形成されたMTU（ATTオーバーヘッドの3バイトを引いた値）を使用して、コンテナペイロードの最大サイズを決定</p>
+      <p>デフォルトタイムアウトは<strong>100ms</strong>で、タイムアウト制御コンテナで設定可能</p>
+    </div>
+
+    <h2>リクエスト/レスポンスフロー</h2>
+    <p>完全なRPC呼び出しは、コマンド層でのエンコード、コンテナ層での分割、BLE伝送、そして受信側での逆処理で構成されます：</p>
+
+    <div class="seqdiag">
+      <script type="application/json">
+{"minWidth":520,"actors":["Central","Peripheral"],"messages":[
+{"self":"Central","label":"1. Protobuf encode request"},
+{"self":"Central","label":"2. Wrap in command header"},
+{"self":"Central","label":"3. Split into containers"},
+{"from":"Central","to":"Peripheral","label":"Write Without Response (FIRST)","accent":true},
+{"from":"Central","to":"Peripheral","label":"Write Without Response (SUBSEQUENT...)","accent":true},
+{"self":"Peripheral","label":"4. Reassemble containers"},
+{"self":"Peripheral","label":"5. Decode command + Protobuf"},
+{"self":"Peripheral","label":"6. Execute handler"},
+{"self":"Peripheral","label":"7. Encode response + split"},
+{"from":"Peripheral","to":"Central","label":"Notify (FIRST)","dashed":true,"accent":true},
+{"from":"Peripheral","to":"Central","label":"Notify (SUBSEQUENT...)","dashed":true,"accent":true},
+{"self":"Central","label":"8. Reassemble + decode response"}
+]}
+      </script>
+    </div>
 
     <h2>制御コンテナ</h2>
     <p>制御コンテナ（<code>type=0b11</code>）は、アプリケーションデータの代わりにプロトコルレベルのコマンドを送信します。</p>
 
     <h3>タイムアウト共有 (control_cmd=0x1)</h3>
     <p>ペリフェラルが処理タイムアウトをセントラルに伝えることができます。</p>
-      <h3>リクエスト (Central &rarr; Peripheral)</h3>
+      <h4>リクエスト (Central &rarr; Peripheral)</h4>
       <table>
         <thead><tr><th>フィールド</th><th>値</th></tr></thead>
         <tbody>
@@ -136,7 +228,7 @@
           <tr><td>payload_len</td><td><code>0x00</code></td></tr>
         </tbody>
       </table>
-      <h3>レスポンス (Peripheral &rarr; Central)</h3>
+      <h4>レスポンス (Peripheral &rarr; Central)</h4>
       <table>
         <thead><tr><th>フィールド</th><th>値</th></tr></thead>
         <tbody>
@@ -149,7 +241,7 @@
 
     <h3>機能共有 (control_cmd=0x4)</h3>
     <p>ペリフェラルがバッファ制約と機能フラグをセントラルに伝えることができます。</p>
-      <h3>リクエスト (Central &rarr; Peripheral)</h3>
+      <h4>リクエスト (Central &rarr; Peripheral)</h4>
       <table>
         <thead><tr><th>フィールド</th><th>値</th></tr></thead>
         <tbody>
@@ -161,7 +253,7 @@
           <tr><td>payload[4:6]</td><td><code>flags</code>（16ビットLE、通常0）</td></tr>
         </tbody>
       </table>
-      <h3>レスポンス (Peripheral &rarr; Central)</h3>
+      <h4>レスポンス (Peripheral &rarr; Central)</h4>
       <table>
         <thead><tr><th>フィールド</th><th>値</th></tr></thead>
         <tbody>
@@ -173,7 +265,7 @@
           <tr><td>payload[4:6]</td><td><code>flags</code>（16ビットLE） &mdash; ビット0: 暗号化サポート</td></tr>
         </tbody>
       </table>
-      <p><code>flags</code>が存在しない場合（後方互換性のための4バイトペイロード）、オプション機能は利用不可</p>
+      <p>機能ペイロードは常に6バイトです。オプション機能を持たないペリフェラルは、単に<code>flags = 0x0000</code>を報告します。</p>
 
     <h3>ストリーム終了 (control_cmd=0x2, 0x3)</h3>
     <p>ストリーミングシーケンスの終了を通知します。どちら側からでもストリームを終了できます。</p>
@@ -200,6 +292,7 @@
       <p>エラーコード：</p>
       <ul>
         <li><code>0x01</code> &mdash; <strong>RESPONSE_TOO_LARGE</strong>: レスポンスペイロードが<code>max_response_payload_size</code>を超過</li>
+        <li><code>0x02</code> &mdash; <strong>BUSY</strong>: ペリフェラルに空きのリクエストスロットがない（別のトランザクションを処理中）。セントラルは再試行する必要がある</li>
       </ul>
 
     <h3>鍵交換 (control_cmd=0x6)</h3>
@@ -215,85 +308,7 @@
       </table>
       <p>ハンドシェイクを完了するために4つのコンテナ（ステップ1〜4）が交換されます。完了後、すべての後続データコンテナは暗号化されたペイロードを送信します</p>
 
-    <h3>暗号化データコンテナ</h3>
-    <p>暗号化が有効な場合、データコンテナ（FIRST / SUBSEQUENT）のペイロードは、シリアライズされたコマンドの暗号化形式に置き換えられます：</p>
-    <div class="packet-format-wrapper">
-      <div class="packet-format">
-        <div class="packet-field" style="flex:4"><div class="packet-field-name">counter</div><div class="packet-field-size">32 bits (LE)</div></div>
-        <div class="packet-field packet-field-var" style="flex:10"><div class="packet-field-name">ciphertext</div><div class="packet-field-size">variable</div></div>
-        <div class="packet-field" style="flex:4"><div class="packet-field-name">tag</div><div class="packet-field-size">128 bits</div></div>
-      </div>
-    </div>
-    <table>
-      <thead><tr><th>フィールド</th><th>サイズ</th><th>説明</th></tr></thead>
-      <tbody>
-        <tr><td><code>counter</code></td><td>4バイト</td><td>単調増加カウンター（リトルエンディアン）。AES-GCMのnonceおよびリプレイ検出に使用。</td></tr>
-        <tr><td><code>ciphertext</code></td><td>Nバイト</td><td>AES-128-GCMで暗号化されたシリアライズ済みコマンド</td></tr>
-        <tr><td><code>tag</code></td><td>16バイト</td><td>AES-GCM認証タグ</td></tr>
-      </tbody>
-    </table>
-    <p>合計オーバーヘッド: <strong>20バイト</strong>（カウンター4バイト + タグ16バイト）。暗号文は通常通りコンテナに分割されます。</p>
-
-    <h2>コマンド層</h2>
-    <p>コマンド層は、Protocol Buffersでエンコードされたデータをメタデータで包みます。コマンドは名前（ASCII文字列）で識別され、柔軟で人間が読みやすいディスパッチを可能にします。</p>
-
-    <h3>コマンドフォーマット</h3>
-    <div class="packet-format-wrapper">
-      <div class="packet-format">
-        <div class="packet-field" style="flex:1"><div class="packet-field-name">T</div><div class="packet-field-size">1 bit</div></div>
-        <div class="packet-field" style="flex:7"><div class="packet-field-name">reserved</div><div class="packet-field-size">7 bits</div></div>
-        <div class="packet-field" style="flex:8"><div class="packet-field-name">cmd_name_len</div><div class="packet-field-size">8 bits</div></div>
-        <div class="packet-field" style="flex:16"><div class="packet-field-name">cmd_name</div><div class="packet-field-size">variable</div></div>
-        <div class="packet-field" style="flex:16"><div class="packet-field-name">data_len</div><div class="packet-field-size">16 bits (LE)</div></div>
-        <div class="packet-field packet-field-var" style="flex:16"><div class="packet-field-name">data</div><div class="packet-field-size">variable</div></div>
-      </div>
-    </div>
-    <table>
-      <thead><tr><th>フィールド</th><th>ビット数</th><th>説明</th></tr></thead>
-      <tbody>
-        <tr><td><code>type</code></td><td>1</td><td><code>0</code> = リクエスト、<code>1</code> = レスポンス</td></tr>
-        <tr><td><code>reserved</code></td><td>7</td><td>ゼロ埋め</td></tr>
-        <tr><td><code>cmd_name_len</code></td><td>8</td><td>コマンド名の長さ（バイト）</td></tr>
-        <tr><td><code>cmd_name</code></td><td>可変</td><td>ASCIIコマンド名（例: <code>echo</code>、<code>flash_read</code>）</td></tr>
-        <tr><td><code>data_len</code></td><td>16</td><td>protobufデータの長さ（バイト、リトルエンディアン）</td></tr>
-        <tr><td><code>data</code></td><td>可変</td><td>Protocol Buffersでエンコードされたペイロード</td></tr>
-      </tbody>
-    </table>
-
-    <h3>コマンド検出</h3>
-    <p>コマンドは<code>.proto</code>ファイルの定義から自動的に生成されます。<code>*Request</code> / <code>*Response</code>メッセージのペアから、プレフィックスを<code>snake_case</code>に変換したコマンド名が生成されます：</p>
-    <table>
-      <thead><tr><th>メッセージペア</th><th>コマンド名</th></tr></thead>
-      <tbody>
-        <tr><td><code>EchoRequest</code> + <code>EchoResponse</code></td><td><code>echo</code></td></tr>
-        <tr><td><code>FlashReadRequest</code> + <code>FlashReadResponse</code></td><td><code>flash_read</code></td></tr>
-        <tr><td><code>DataWriteRequest</code> + <code>DataWriteResponse</code></td><td><code>data_write</code></td></tr>
-      </tbody>
-    </table>
-
-    <h2>リクエスト/レスポンスフロー</h2>
-    <p>完全なRPC呼び出しは、コマンド層でのエンコード、コンテナ層での分割、BLE伝送、そして受信側での逆処理で構成されます：</p>
-
-    <div class="seqdiag">
-      <script type="application/json">
-{"minWidth":520,"actors":["Central","Peripheral"],"messages":[
-{"self":"Central","label":"1. Protobuf encode request"},
-{"self":"Central","label":"2. Wrap in command header"},
-{"self":"Central","label":"3. Split into containers"},
-{"from":"Central","to":"Peripheral","label":"Write Without Response (FIRST)","accent":true},
-{"from":"Central","to":"Peripheral","label":"Write Without Response (SUBSEQUENT...)","accent":true},
-{"self":"Peripheral","label":"4. Reassemble containers"},
-{"self":"Peripheral","label":"5. Decode command + Protobuf"},
-{"self":"Peripheral","label":"6. Execute handler"},
-{"self":"Peripheral","label":"7. Encode response + split"},
-{"from":"Peripheral","to":"Central","label":"Notify (FIRST)","dashed":true,"accent":true},
-{"from":"Peripheral","to":"Central","label":"Notify (SUBSEQUENT...)","dashed":true,"accent":true},
-{"self":"Central","label":"8. Reassemble + decode response"}
-]}
-      </script>
-    </div>
-
-    <h2>ストリーミング</h2>
+    <h2 id="streaming">ストリーミング</h2>
     <p>bleRPCは、単純なリクエスト/レスポンスに加えて、2つのストリーミングパターンをサポートしています：</p>
 
     <h3>Peripheral &rarr; Central ストリーム（サーバーストリーミング）</h3>
@@ -320,30 +335,6 @@
 {"from":"Central","to":"Peripheral","label":"Request 3","accent":true},
 {"from":"Central","to":"Peripheral","label":"STREAM_END_C2P (control)","dashed":true,"accent":true},
 {"from":"Peripheral","to":"Central","label":"Final Response (Notify)","dashed":true}
-]}
-      </script>
-    </div>
-
-    <h2>接続セットアップシーケンス</h2>
-    <p>セントラルがペリフェラルに接続する際、以下の初期化ステップを実行します：</p>
-    <div class="seqdiag">
-      <script type="application/json">
-{"minWidth":640,"actors":["Central","Peripheral"],"messages":[
-{"from":"Central","to":"Peripheral","label":"BLE Connect","accent":true},
-{"from":"Central","to":"Peripheral","label":"MTU Exchange","accent":true},
-{"from":"Central","to":"Peripheral","label":"Discover Services","accent":true},
-{"from":"Central","to":"Peripheral","label":"Enable Notifications","accent":true},
-{"from":"Central","to":"Peripheral","label":"Timeout Request (ctrl)","accent":true},
-{"from":"Peripheral","to":"Central","label":"Timeout Response (e.g. 100ms)","dashed":true},
-{"from":"Central","to":"Peripheral","label":"Capability Request (ctrl)","accent":true},
-{"from":"Peripheral","to":"Central","label":"Capability Response (max_req, max_resp, flags)","dashed":true},
-{"note":"Optional — when encryption is enabled (flags & 0x01)"},
-{"from":"Central","to":"Peripheral","label":"Key Exchange Step 1 (ctrl 0x6)","accent":true},
-{"from":"Peripheral","to":"Central","label":"Key Exchange Step 2 (ctrl 0x6)","dashed":true},
-{"from":"Central","to":"Peripheral","label":"Key Exchange Step 3 (ctrl 0x6)","accent":true},
-{"from":"Peripheral","to":"Central","label":"Key Exchange Step 4 (ctrl 0x6)","dashed":true},
-{"note":"AES-128-GCM session established"},
-{"note":"Ready for RPC calls"}
 ]}
       </script>
     </div>
