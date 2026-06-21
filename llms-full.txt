@@ -109,16 +109,71 @@ Container Layer (MTU-based split/reassemble + sequencing)
 BLE GATT (single characteristic)
 ```
 
-### BLE Transport
+### Connection Setup Sequence
 
-All communication uses a **single GATT Characteristic**:
+When a central connects to a peripheral, it performs these initialization steps:
 
-- **Requests**: Central writes via Write Without Response
-- **Responses**: Peripheral sends via Notify
+```
+Central                              Peripheral
+   |                                      |
+   | --- BLE Connect -------------------->|
+   | --- MTU Exchange ------------------->|
+   | --- Discover Services -------------->|
+   | --- Enable Notifications ----------->|
+   | --- Timeout Request (ctrl) --------->|
+   | <--- Timeout Response (e.g. 100ms) -|
+   | --- Capability Request (ctrl) ------>|
+   | <--- Capability Response (max_req, max_resp, flags)
+   |                                      |
+   | [If encryption supported (flags & 0x01):]
+   | --- Key Exchange Step 1 (ctrl 0x6) ->|
+   | <--- Key Exchange Step 2 (ctrl 0x6) -|
+   | --- Key Exchange Step 3 (ctrl 0x6) ->|
+   | <--- Key Exchange Step 4 (ctrl 0x6) -|
+   | [AES-128-GCM session established]    |
+   |                                      |
+   | [Ready for RPC calls]                |
+```
+### Command Layer
 
-MTU is negotiated automatically via the BLE ATT MTU Exchange procedure. The application uses the negotiated MTU (minus 3 bytes ATT overhead) to determine the maximum container payload size.
+The command layer wraps Protocol Buffers-encoded data with RPC metadata. Commands are identified by name (ASCII string), enabling flexible, human-readable dispatch.
 
-Default timeout is **100ms**, configurable via the timeout control container.
+#### Command Format
+
+```
++------+----------+--------------+----------+----------+------+
+| T    | reserved | cmd_name_len | cmd_name | data_len | data |
+| 1 bit| 7 bits   | 8 bits       | variable | 16 bits  | var  |
++------+----------+--------------+----------+----------+------+
+```
+
+| Field        | Bits | Description                                            |
+|--------------|------|--------------------------------------------------------|
+| type         | 1    | `0` = request, `1` = response                          |
+| reserved     | 7    | Zero-filled                                            |
+| cmd_name_len | 8    | Length of the command name in bytes                     |
+| cmd_name     | var  | ASCII command name (e.g., `echo`, `flash_read`)        |
+| data_len     | 16   | Length of the protobuf data (bytes, little-endian)      |
+| data         | var  | Protocol Buffers encoded payload                        |
+
+#### Command Discovery
+
+The code generator derives commands from your `.proto` file in one of two ways:
+
+- **Service definitions (preferred)**: if the file declares a `service { ... }` block, each `rpc` method becomes a command. The command name is the method name in `snake_case`, and its request/response types are taken from the method signature.
+- **Naming convention (fallback)**: when no service is defined, matching `*Request` / `*Response` message pairs produce a command whose name is the prefix converted to `snake_case`:
+
+| Message Pair                              | Command Name  |
+|-------------------------------------------|---------------|
+| `EchoRequest` + `EchoResponse`            | `echo`        |
+| `FlashReadRequest` + `FlashReadResponse`  | `flash_read`  |
+| `DataWriteRequest` + `DataWriteResponse`  | `data_write`  |
+
+Streaming commands are registered separately -- either via streaming `rpc` methods in a service block, or by listing them in `proto/streaming.txt` (e.g. `counter_stream p2c`, `counter_upload c2p`). These generate dedicated streaming APIs instead of a plain request/response method.
+
+### Encryption Layer
+
+Encryption is **optional**. When a session is active, the serialized command is encrypted with AES-128-GCM *before* it is handed to the container layer. The encrypted payload is `[counter:4][ciphertext:N][tag:16]` -- a **20-byte** overhead (4-byte counter + 16-byte GCM tag) -- which is then split into containers exactly like a plaintext command. The counter doubles as the AES-GCM nonce and as a replay guard. See the [Encryption](#encryption) section for the handshake, key derivation, nonce construction, and replay rules.
 
 ### Container Layer
 
@@ -193,6 +248,38 @@ Total payload: **500 bytes** (238 + 240 + 22)
 #### Maximum Payload
 
 Two limits bound a single transaction. The `sequence_number` is 8 bits, capping it at ~255 containers; with a typical MTU of 247 (240 bytes per subsequent container) that is a practical maximum of approximately **60 KB**. The 16-bit `total_length` field also imposes an absolute ceiling of **65,535 bytes**. For larger transfers, use multiple request/response cycles.
+
+### BLE Transport
+
+All communication uses a **single GATT Characteristic**:
+
+- **Requests**: Central writes via Write Without Response
+- **Responses**: Peripheral sends via Notify
+
+MTU is negotiated automatically via the BLE ATT MTU Exchange procedure. The application uses the negotiated MTU (minus 3 bytes ATT overhead) to determine the maximum container payload size.
+
+Default timeout is **100ms**, configurable via the timeout control container.
+
+### Request/Response Flow
+
+A complete RPC call involves encoding at the command layer, splitting at the container layer, BLE transmission, and the reverse on the receiving side:
+
+```
+Central                              Peripheral
+   |                                      |
+   | 1. Protobuf encode request           |
+   | 2. Wrap in command header            |
+   | 3. Split into containers             |
+   | --- Write Without Response (FIRST) -->|
+   | --- Write Without Response (SUBSEQ)->|
+   |                 4. Reassemble containers
+   |                 5. Decode command + Protobuf
+   |                 6. Execute handler
+   |                 7. Encode response + split
+   | <--- Notify (FIRST) ----------------|
+   | <--- Notify (SUBSEQUENT...) --------|
+   | 8. Reassemble + decode response     |
+```
 
 ### Control Containers
 
@@ -287,83 +374,6 @@ Carries key exchange handshake payloads for establishing an encrypted session. U
 
 Four containers are exchanged (Step 1-4) to complete the handshake. After completion, all subsequent data containers carry encrypted payloads.
 
-### Encrypted Data Container
-
-When encryption is active, the payload of data containers (FIRST / SUBSEQUENT) is replaced by the encrypted form of the serialized command:
-
-```
-+---------+------------+-----+
-| counter | ciphertext | tag |
-| 32 bits | variable   | 128 bits |
-+---------+------------+-----+
-```
-
-| Field      | Size     | Description                                                                              |
-|------------|----------|------------------------------------------------------------------------------------------|
-| counter    | 4 bytes  | Monotonically increasing counter (little-endian). Used as AES-GCM nonce and for replay detection. |
-| ciphertext | N bytes  | AES-128-GCM encrypted serialized command                                                 |
-| tag        | 16 bytes | AES-GCM authentication tag                                                               |
-
-Total overhead: **20 bytes** (4 counter + 16 tag). The ciphertext is then split into containers as usual.
-
-### Command Layer
-
-The command layer wraps Protocol Buffers-encoded data with RPC metadata. Commands are identified by name (ASCII string), enabling flexible, human-readable dispatch.
-
-#### Command Format
-
-```
-+------+----------+--------------+----------+----------+------+
-| T    | reserved | cmd_name_len | cmd_name | data_len | data |
-| 1 bit| 7 bits   | 8 bits       | variable | 16 bits  | var  |
-+------+----------+--------------+----------+----------+------+
-```
-
-| Field        | Bits | Description                                            |
-|--------------|------|--------------------------------------------------------|
-| type         | 1    | `0` = request, `1` = response                          |
-| reserved     | 7    | Zero-filled                                            |
-| cmd_name_len | 8    | Length of the command name in bytes                     |
-| cmd_name     | var  | ASCII command name (e.g., `echo`, `flash_read`)        |
-| data_len     | 16   | Length of the protobuf data (bytes, little-endian)      |
-| data         | var  | Protocol Buffers encoded payload                        |
-
-#### Command Discovery
-
-The code generator derives commands from your `.proto` file in one of two ways:
-
-- **Service definitions (preferred)**: if the file declares a `service { ... }` block, each `rpc` method becomes a command. The command name is the method name in `snake_case`, and its request/response types are taken from the method signature.
-- **Naming convention (fallback)**: when no service is defined, matching `*Request` / `*Response` message pairs produce a command whose name is the prefix converted to `snake_case`:
-
-| Message Pair                              | Command Name  |
-|-------------------------------------------|---------------|
-| `EchoRequest` + `EchoResponse`            | `echo`        |
-| `FlashReadRequest` + `FlashReadResponse`  | `flash_read`  |
-| `DataWriteRequest` + `DataWriteResponse`  | `data_write`  |
-
-Streaming commands are registered separately -- either via streaming `rpc` methods in a service block, or by listing them in `proto/streaming.txt` (e.g. `counter_stream p2c`, `counter_upload c2p`). These generate dedicated streaming APIs instead of a plain request/response method.
-
-### Request/Response Flow
-
-A complete RPC call involves encoding at the command layer, splitting at the container layer, BLE transmission, and the reverse on the receiving side:
-
-```
-Central                              Peripheral
-   |                                      |
-   | 1. Protobuf encode request           |
-   | 2. Wrap in command header            |
-   | 3. Split into containers             |
-   | --- Write Without Response (FIRST) -->|
-   | --- Write Without Response (SUBSEQ)->|
-   |                 4. Reassemble containers
-   |                 5. Decode command + Protobuf
-   |                 6. Execute handler
-   |                 7. Encode response + split
-   | <--- Notify (FIRST) ----------------|
-   | <--- Notify (SUBSEQUENT...) --------|
-   | 8. Reassemble + decode response     |
-```
-
 ### Streaming
 
 bleRPC supports two streaming patterns beyond simple request/response:
@@ -394,32 +404,6 @@ Central              Peripheral
    | --- Request 3 ------>|
    | --- STREAM_END_C2P ->|
    | <--- Final Response -|
-```
-
-### Connection Setup Sequence
-
-When a central connects to a peripheral, it performs these initialization steps:
-
-```
-Central                              Peripheral
-   |                                      |
-   | --- BLE Connect -------------------->|
-   | --- MTU Exchange ------------------->|
-   | --- Discover Services -------------->|
-   | --- Enable Notifications ----------->|
-   | --- Timeout Request (ctrl) --------->|
-   | <--- Timeout Response (e.g. 100ms) -|
-   | --- Capability Request (ctrl) ------>|
-   | <--- Capability Response (max_req, max_resp, flags)
-   |                                      |
-   | [If encryption supported (flags & 0x01):]
-   | --- Key Exchange Step 1 (ctrl 0x6) ->|
-   | <--- Key Exchange Step 2 (ctrl 0x6) -|
-   | --- Key Exchange Step 3 (ctrl 0x6) ->|
-   | <--- Key Exchange Step 4 (ctrl 0x6) -|
-   | [AES-128-GCM session established]    |
-   |                                      |
-   | [Ready for RPC calls]                |
 ```
 
 ---
@@ -1160,7 +1144,7 @@ TypeScript library for React Native. Uses `@noble/ciphers`, `@noble/curves`, and
 
 ### CI / CD
 
-Each repository has GitHub Actions CI that runs on every push and pull request:
+Each repository has GitHub Actions CI:
 
 | Repository             | CI Checks                                                                    |
 |------------------------|------------------------------------------------------------------------------|

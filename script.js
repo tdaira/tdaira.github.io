@@ -7,7 +7,7 @@ var i18n = {
     protocol: "Protocol",
     encryption: "Encryption",
     repositories: "Repositories",
-    footer: 'bleRPC is licensed under <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache-2.0</a>. &copy; 2025 tdaira.'
+    footer: 'bleRPC is licensed under <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache-2.0</a>. &copy; 2025-2026 tdaira.'
   },
   ja: {
     overview: "概要",
@@ -16,7 +16,7 @@ var i18n = {
     protocol: "プロトコル",
     encryption: "暗号化",
     repositories: "リポジトリ",
-    footer: 'bleRPC is licensed under <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache-2.0</a>. &copy; 2025 tdaira.'
+    footer: 'bleRPC is licensed under <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache-2.0</a>. &copy; 2025-2026 tdaira.'
   },
   zh: {
     overview: "概述",
@@ -25,7 +25,7 @@ var i18n = {
     protocol: "协议",
     encryption: "加密",
     repositories: "仓库",
-    footer: 'bleRPC is licensed under <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache-2.0</a>. &copy; 2025 tdaira.'
+    footer: 'bleRPC is licensed under <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache-2.0</a>. &copy; 2025-2026 tdaira.'
   }
 };
 
