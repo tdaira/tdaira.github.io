@@ -40,7 +40,7 @@
 
   <main>
     <h1>プロトコル仕様</h1>
-    <p>bleRPCはBLE GATTの上に階層化されたプロトコルスタックを使用します。<strong>コマンド層</strong>はProtocol BuffersペイロードをRPCメタデータで包み、オプションの<strong>暗号化層</strong>はシリアライズされたコマンドを暗号化し、<strong>コンテナ層</strong>はMTUサイズのパケットに分割してBLE伝送します。</p>
+    <p>bleRPCはBLE GATTの上に階層化されたプロトコルスタックを使用します。<strong>コマンド層</strong>はProtocol BuffersペイロードをRPCメタデータでカプセル化し、オプションの<strong>暗号化層</strong>はシリアライズされたコマンドを暗号化し、<strong>コンテナ層</strong>はMTUサイズのパケットに分割してBLE伝送します。</p>
 
     <div class="flowchart">
       <script type="application/json">

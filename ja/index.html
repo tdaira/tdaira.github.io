@@ -149,7 +149,7 @@ if (ret == 0)
           </svg>
         </div>
         <h3>Protocol Buffers</h3>
-        <p><code>.proto</code>ファイルでBLE通信を定義。型安全で言語に依存しないシリアライゼーションを曖昧さなく実現</p>
+        <p><code>.proto</code>ファイルでBLE通信を定義。型安全で言語に依存しない厳密なシリアライゼーションを実現</p>
       </div>
       <div class="feature">
         <div class="feature-icon">
@@ -179,13 +179,13 @@ if (ret == 0)
 
     <p class="eyebrow">Architecture</p>
     <h2>仕組み</h2>
-    <p>bleRPCはBLE GATTの上に階層化されたプロトコルスタックを提供します：</p>
+    <p>bleRPCはBLE GATTの上に階層化されたプロトコルスタックを提供する：</p>
     <ol>
-      <li><strong>コマンド層</strong> &mdash; Protocol Buffersペイロードをコマンドメタデータ（名前、タイプ、データ長）で包みます</li>
-      <li><strong>暗号化層</strong>（オプション） &mdash; <a href="encryption.html">4ステップの鍵交換</a>後、シリアライズされたコマンドをAES-128-GCMで暗号化します</li>
-      <li><strong>コンテナ層</strong> &mdash; ペイロードをMTUサイズのコンテナに分割してBLE伝送し、受信側で再組み立てします</li>
+      <li><strong>コマンド層</strong> &mdash; Protocol Buffersペイロードをコマンドメタデータ（名前、タイプ、データ長）でカプセル化する</li>
+      <li><strong>暗号化層</strong>（オプション） &mdash; <a href="encryption.html">4ステップの鍵交換</a>後、シリアライズされたコマンドをAES-128-GCMで暗号化する</li>
+      <li><strong>コンテナ層</strong> &mdash; ペイロードをMTUサイズのコンテナに分割してBLE経由で送信し、受信側でリアセンブル（再構築）する</li>
     </ol>
-    <p>すべての通信は単一のGATT Characteristicを使用します。CentralはWrite Without Responseでリクエストを書き込み、Notifyでレスポンスを受信します。</p>
+    <p>すべての通信は単一のGATT Characteristicを使用する。CentralはWrite Without Responseでリクエストを書き込み、Notifyでレスポンスを受信する。</p>
 
     <div class="seqdiag">
       <script type="application/json">
