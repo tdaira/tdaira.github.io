@@ -107,7 +107,7 @@
     <h3 id="command-discovery">命令发现</h3>
     <p>代码生成器通过以下两种方式之一从你的 <code>.proto</code> 文件派生命令：</p>
     <ul>
-      <li><strong>服务定义（首选）</strong> &mdash; 如果文件声明了 <code>service { ... }</code> 块，则每个 <code>rpc</code> 方法都会成为一个命令。命令名称是方法名的 <code>snake_case</code> 形式，其请求/响应类型取自方法签名。</li>
+      <li><strong>服务定义（首选）</strong> &mdash; 如果文件声明了 <code>service { ... }</code> 块，则每个 <code>rpc</code> 方法都会成为一个命令。命令名称是方法名的 <code>snake_case</code> 形式，其请求/响应类型取自方法签名</li>
       <li><strong>命名约定（回退）</strong> &mdash; 当未定义服务时，匹配的 <code>*Request</code> / <code>*Response</code> 消息对会生成一个命令，其名称是前缀转换为 <code>snake_case</code> 的形式：</li>
     </ul>
     <table>
@@ -288,7 +288,7 @@
           <tr><td>payload[4:6]</td><td><code>flags</code>（16 位小端序）&mdash; 位 0：支持加密</td></tr>
         </tbody>
       </table>
-      <p>能力载荷始终为 6 字节。没有可选功能的 peripheral 只需报告 <code>flags = 0x0000</code></p>
+      <p>能力载荷始终为 6 字节。没有可选功能的 peripheral 只需报告 <code>flags = 0x0000</code>。</p>
 
     <h3>流结束 (control_cmd=0x2, 0x3)</h3>
     <p>表示流式序列结束。任一端都可以终止流。</p>
@@ -329,7 +329,7 @@
           <tr><td>payload</td><td>密钥交换步骤数据（参见<a href="encryption.html">加密</a>）</td></tr>
         </tbody>
       </table>
-      <p>交换 4 个容器（步骤 1&ndash;4）完成握手。完成后，所有后续数据容器携带加密载荷</p>
+      <p>交换 4 个容器（步骤 1&ndash;4）完成握手。完成后，所有后续数据容器携带加密载荷。</p>
 
     <h2 id="streaming">流式传输</h2>
     <p>bleRPC 支持两种流式传输模式，超越简单的请求/响应：</p>
